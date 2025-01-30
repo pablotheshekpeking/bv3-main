@@ -60,8 +60,8 @@ export const addPoints = async (req, res) => {
 
 export const initializePointsPurchase = async (req, res) => {
   try {
-    const userId = req.user.userId;
     const { amount } = req.body;
+    const userId = req.user.userId;
 
     if (!amount || amount < 100) {
       throw new APIError('Minimum purchase amount is 100', 400);
@@ -69,20 +69,64 @@ export const initializePointsPurchase = async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true }
+      select: {
+        email: true,
+        payments: {
+          where: {
+            provider: 'PAYSTACK',
+            status: 'PENDING',
+            metadata: {
+              path: ['type'],
+              equals: 'points'
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1
+        }
+      }
     });
 
-    const paymentRef = `POINTS-${userId}-${Date.now()}`;
+    // Check for existing pending points payment
+    const existingPayment = user.payments[0];
+    if (existingPayment && 
+        (new Date() - new Date(existingPayment.createdAt)) < 30 * 60 * 1000) {
+      return res.json({
+        status: 'success',
+        payment: {
+          authorizationUrl: existingPayment.metadata?.authorizationUrl,
+          reference: existingPayment.reference
+        }
+      });
+    }
 
+    // Initialize new payment
+    const paymentRef = `POINTS-${userId}-${Date.now()}`;
     const paystackResponse = await paystackService.initializeTransaction({
       email: user.email,
-      amount: amount,
+      amount: amount * 100, // Convert to kobo/cents
       reference: paymentRef,
-      callbackUrl: `${process.env.FRONTEND_URL}/points/verify`,
       metadata: {
         userId,
         type: 'points',
-        pointsAmount: Math.floor(amount / 100) // 1 point per currency unit
+        pointsAmount: amount
+      }
+    });
+
+    // Create payment record
+    await prisma.payment.create({
+      data: {
+        userId,
+        amount,
+        reference: paymentRef,
+        status: 'PENDING',
+        provider: 'PAYSTACK',
+        metadata: {
+          type: 'points',
+          pointsAmount: amount,
+          authorizationUrl: paystackResponse.data.authorization_url
+        }
       }
     });
 
@@ -94,6 +138,69 @@ export const initializePointsPurchase = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ error: error.message });
+    console.error('Points purchase error:', error);
+    res.status(error.statusCode || 500).json({
+      error: error.message || 'Internal server error'
+    });
+  }
+};
+
+export const verifyPointsPayment = async (req, res) => {
+  try {
+    const { reference } = req.query;
+    const userId = req.user.userId;
+
+    const payment = await prisma.payment.findFirst({
+      where: {
+        reference,
+        userId,
+        status: 'PENDING',
+        metadata: {
+          path: ['type'],
+          equals: 'points'
+        }
+      }
+    });
+
+    if (!payment) {
+      throw new APIError('Payment not found or already processed', 404);
+    }
+
+    const isPaymentSuccessful = await paystackService.verifyPaymentStatus(reference);
+    
+    if (isPaymentSuccessful) {
+      await prisma.$transaction(async (prisma) => {
+        // Update payment status
+        await prisma.payment.update({
+          where: { id: payment.id },
+          data: { status: 'CONFIRMED' }
+        });
+
+        // Add points to user
+        const pointsToAdd = Math.floor(payment.amount);
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            points: { increment: pointsToAdd }
+          }
+        });
+      });
+
+      return res.json({
+        status: 'success',
+        message: 'Points added successfully',
+        points: Math.floor(payment.amount)
+      });
+    }
+
+    res.json({
+      status: 'pending',
+      message: 'Payment verification failed'
+    });
+  } catch (error) {
+    console.error('Points verification error:', error);
+    res.status(error.statusCode || 500).json({
+      error: error.message || 'Internal server error'
+    });
   }
 }; 

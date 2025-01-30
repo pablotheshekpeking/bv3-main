@@ -55,32 +55,33 @@ enum UserRole {
 }
 
 model User {
-  id               String         @id @default(uuid())
-  email            String         @unique
-  password         String
-  firstName        String
-  lastName         String
-  phone            String?        @unique
-  role             UserRole       @default(USER)
-  status           UserStatus     @default(PENDING)
-  emailVerified    Boolean        @default(false)
-  phoneVerified    Boolean        @default(false)
-  kycVerified      Boolean        @default(false)
-  profileImage     String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  listings         Listing[]
-  verifications    Verification[]
-  reviews          Review[]
-  sentOffers       Offer[]        @relation("SentOffers")
-  receivedOffers   Offer[]        @relation("ReceivedOffers")
-  sentMessages     Message[]      @relation("SentMessages")
-  buyerConversations Conversation[] @relation("BuyerConversations")
+  id                  String         @id @default(uuid())
+  email               String         @unique
+  password            String
+  firstName           String
+  lastName            String
+  phone               String?        @unique
+  role                UserRole       @default(USER)
+  status              UserStatus     @default(PENDING)
+  emailVerified       Boolean        @default(false)
+  phoneVerified       Boolean        @default(false)
+  kycVerified         Boolean        @default(false)
+  profileImage        String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  listings            Listing[]
+  verifications       Verification[]
+  reviews             Review[]
+  sentOffers          Offer[]        @relation("SentOffers")
+  receivedOffers      Offer[]        @relation("ReceivedOffers")
+  sentMessages        Message[]      @relation("SentMessages")
+  buyerConversations  Conversation[] @relation("BuyerConversations")
   sellerConversations Conversation[] @relation("SellerConversations")
-  points           Int            @default(0)
-  isVendor         Boolean        @default(false)
-  bookings         Booking[]
-  receivedReviews  Review[]      @relation("ReceivedReviews")
+  points              Int            @default(0)
+  isVendor            Boolean        @default(false)
+  bookings            Booking[]
+  payments            Payment[]
+  receivedReviews     Review[]       @relation("ReceivedReviews")
 }
 
 model Verification {
@@ -114,7 +115,7 @@ model Listing {
   reviews        Review[]
   offers         Offer[]
   conversations  Conversation[]
-  messages       Message[]              @relation("ListingMessages")
+  messages       Message[]               @relation("ListingMessages")
   categoryId     String?
   category       Category?               @relation(fields: [categoryId], references: [id])
   availabilities ApartmentAvailability[]
@@ -147,19 +148,19 @@ model Review {
 }
 
 model Message {
-  id             String        @id @default(cuid())
+  id             String   @id @default(cuid())
   conversationId String
   senderId       String
   listingId      String?
   content        String
   metadata       Json?
-  read           Boolean       @default(false)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  read           Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  conversation   Conversation  @relation(fields: [conversationId], references: [id])
-  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
-  listing        Listing?     @relation("ListingMessages", fields: [listingId], references: [id])
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  sender       User         @relation("SentMessages", fields: [senderId], references: [id])
+  listing      Listing?     @relation("ListingMessages", fields: [listingId], references: [id])
 }
 
 model Offer {
@@ -193,20 +194,20 @@ model Category {
 }
 
 model Conversation {
-  id          String    @id @default(cuid())
-  type        String    @default("GENERAL")
-  listingId   String?
-  buyerId     String
-  sellerId    String
-  metadata    Json?
-  messages    Message[]
-  lastMessageAt DateTime @default(now())
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  type          String    @default("GENERAL")
+  listingId     String?
+  buyerId       String
+  sellerId      String
+  metadata      Json?
+  messages      Message[]
+  lastMessageAt DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  listing     Listing?  @relation(fields: [listingId], references: [id])
-  buyer       User      @relation("BuyerConversations", fields: [buyerId], references: [id])
-  seller      User      @relation("SellerConversations", fields: [sellerId], references: [id])
+  listing Listing? @relation(fields: [listingId], references: [id])
+  buyer   User     @relation("BuyerConversations", fields: [buyerId], references: [id])
+  seller  User     @relation("SellerConversations", fields: [sellerId], references: [id])
 
   @@unique([buyerId, sellerId, listingId])
 }
@@ -224,21 +225,22 @@ model ApartmentAvailability {
 }
 
 model Booking {
-  id          String        @id @default(uuid())
-  listingId   String
-  userId      String
-  checkIn     DateTime
-  checkOut    DateTime
-  basePrice   Decimal       @default(0)
-  serviceFee  Decimal       @default(0)
-  totalPrice  Decimal       @default(0)
-  status      BookingStatus @default(PENDING)
-  paymentRef  String?      // Paystack payment reference
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  listing     Listing      @relation(fields: [listingId], references: [id])
-  user        User         @relation(fields: [userId], references: [id])
-  deletedAt   DateTime?
+  id         String        @id @default(uuid())
+  listingId  String
+  userId     String
+  checkIn    DateTime
+  checkOut   DateTime
+  basePrice  Decimal       @default(0)
+  serviceFee Decimal       @default(0)
+  totalPrice Decimal       @default(0)
+  status     BookingStatus @default(PENDING)
+  paymentRef String? // Paystack payment reference
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  listing    Listing       @relation(fields: [listingId], references: [id])
+  user       User          @relation(fields: [userId], references: [id])
+  payments   Payment[]
+  deletedAt  DateTime?
 }
 
 enum BookingStatus {
@@ -246,4 +248,27 @@ enum BookingStatus {
   CONFIRMED
   CANCELLED
   COMPLETED
+}
+
+model Payment {
+  id        String        @id @default(uuid())
+  userId    String
+  bookingId String?
+  amount    Decimal
+  reference String        @unique
+  status    PaymentStatus @default(PENDING)
+  provider  String        @default("PAYSTACK")
+  metadata  Json?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  user      User          @relation(fields: [userId], references: [id])
+  booking   Booking?      @relation(fields: [bookingId], references: [id])
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  CONFIRMED
+  FAILED
+  REFUNDED
 }

@@ -15,7 +15,8 @@ const adminOptions = {
         navigation: { name: 'Users & Access' },
         properties: {
           password: { isVisible: false },
-          profileImage: { isVisible: true }
+          profileImage: { isVisible: true },
+          points: { isVisible: { list: true, filter: true, show: true, edit: true } }
         }
       }
     },
@@ -44,6 +45,29 @@ const adminOptions = {
           listingId: {
             isVisible: { list: true, filter: true, show: true, edit: true }
           }
+        }
+      }
+    },
+    {
+      resource: { model: getModelByName('Booking'), client: prisma },
+      options: {
+        navigation: { name: 'Bookings' },
+        properties: {
+          status: { isVisible: { list: true, filter: true, show: true, edit: true } },
+          totalPrice: { isVisible: { list: true, filter: true, show: true, edit: true } },
+          serviceFee: { isVisible: { list: true, filter: true, show: true, edit: true } },
+          basePrice: { isVisible: { list: true, filter: true, show: true, edit: true } }
+        }
+      }
+    },
+    {
+      resource: { model: getModelByName('ApartmentAvailability'), client: prisma },
+      options: {
+        navigation: { name: 'Marketplace' },
+        properties: {
+          startDate: { isVisible: { list: true, filter: true, show: true, edit: true } },
+          endDate: { isVisible: { list: true, filter: true, show: true, edit: true } },
+          pricePerNight: { isVisible: { list: true, filter: true, show: true, edit: true } }
         }
       }
     },
@@ -87,11 +111,28 @@ const adminOptions = {
       options: {
         navigation: { name: 'Marketplace' }
       }
+    },
+    {
+      resource: { model: getModelByName('Payment'), client: prisma },
+      options: {
+        navigation: { name: 'Payments' },
+        properties: {
+          status: { isVisible: { list: true, filter: true, show: true, edit: true } },
+          amount: { isVisible: { list: true, filter: true, show: true, edit: true } },
+          reference: { isVisible: { list: true, filter: true, show: true, edit: false } },
+          metadata: { type: 'mixed', isVisible: { list: false, filter: false, show: true, edit: false } }
+        }
+      }
     }
-  ]
+  ],
+  branding: {
+    companyName: 'Your Company Name',
+    logo: 'https://yourcompany.com/logo.png',
+    softwareBrothers: false
+  }
 };
 
-const admin = new AdminJS(adminOptions);
-const adminRouter = AdminJSExpress.buildRouter(admin);
+const adminJs = new AdminJS(adminOptions);
+const adminRouter = AdminJSExpress.buildRouter(adminJs);
 
-export { admin as adminJs, adminRouter };
+export { adminJs, adminRouter };

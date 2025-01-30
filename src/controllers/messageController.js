@@ -122,42 +122,66 @@ export const getConversation = async (req, res, next) => {
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const messages = await prisma.message.findMany({
+    const conversation = await prisma.conversation.findFirst({
       where: {
         OR: [
-          { senderId: userId, receiverId: otherUserId },
-          { senderId: otherUserId, receiverId: userId }
+          {
+            AND: [
+              { buyerId: userId },
+              { sellerId: otherUserId }
+            ]
+          },
+          {
+            AND: [
+              { buyerId: otherUserId },
+              { sellerId: userId }
+            ]
+          }
         ]
       },
       include: {
-        sender: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            profileImage: true
-          }
+        messages: {
+          orderBy: {
+            createdAt: 'desc'
+          },
+          include: {
+            sender: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                profileImage: true
+              }
+            }
+          },
+          skip,
+          take: limit
         }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      skip,
-      take: limit
+      }
     });
+
+    if (!conversation) {
+      return res.json({
+        status: 'success',
+        messages: [],
+        pagination: {
+          total: 0,
+          pages: 0,
+          currentPage: page,
+          limit
+        }
+      });
+    }
 
     const total = await prisma.message.count({
       where: {
-        OR: [
-          { senderId: userId, receiverId: otherUserId },
-          { senderId: otherUserId, receiverId: userId }
-        ]
+        conversationId: conversation.id
       }
     });
 
     res.json({
       status: 'success',
-      messages,
+      messages: conversation.messages,
       pagination: {
         total,
         pages: Math.ceil(total / limit),
@@ -166,6 +190,7 @@ export const getConversation = async (req, res, next) => {
       }
     });
   } catch (error) {
+    console.error('Get conversation error:', error);
     next(error);
   }
 };
