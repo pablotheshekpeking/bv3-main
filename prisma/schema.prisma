@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ListingType {
+  APARTMENT_RENT
+  APARTMENT_SALE
+  APARTMENT_SHORTLET
+  CAR_SALE
+  CAR_RENT
+  ELECTRONICS
+  FURNITURE
+  OTHER
+}
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  SOLD
+  RENTED
+  EXPIRED
+  REMOVED
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+model User {
+  id               String         @id @default(uuid())
+  email            String         @unique
+  password         String
+  firstName        String
+  lastName         String
+  phone            String?        @unique
+  role             UserRole       @default(USER)
+  status           UserStatus     @default(PENDING)
+  emailVerified    Boolean        @default(false)
+  phoneVerified    Boolean        @default(false)
+  kycVerified      Boolean        @default(false)
+  profileImage     String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  listings         Listing[]
+  verifications    Verification[]
+  reviews          Review[]
+  sentOffers       Offer[]        @relation("SentOffers")
+  receivedOffers   Offer[]        @relation("ReceivedOffers")
+  sentMessages     Message[]      @relation("SentMessages")
+  buyerConversations Conversation[] @relation("BuyerConversations")
+  sellerConversations Conversation[] @relation("SellerConversations")
+  points           Int            @default(0)
+  isVendor         Boolean        @default(false)
+  bookings         Booking[]
+  receivedReviews  Review[]      @relation("ReceivedReviews")
+}
+
+model Verification {
+  id         String             @id @default(uuid())
+  userId     String
+  type       String // EMAIL, PHONE, KYC_ID, KYC_SELFIE
+  status     VerificationStatus @default(PENDING)
+  data       String? // Verification code or document URL
+  expiresAt  DateTime?
+  verifiedAt DateTime?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  user       User               @relation(fields: [userId], references: [id])
+}
+
+model Listing {
+  id             String                  @id @default(uuid())
+  userId         String
+  type           ListingType
+  title          String
+  description    String
+  price          Decimal
+  currency       String                  @default("USD")
+  status         ListingStatus           @default(DRAFT)
+  location       Json? // Stores address and coordinates
+  features       Json? // Flexible storage for different listing types
+  images         Image[]
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  user           User                    @relation(fields: [userId], references: [id])
+  reviews        Review[]
+  offers         Offer[]
+  conversations  Conversation[]
+  messages       Message[]              @relation("ListingMessages")
+  categoryId     String?
+  category       Category?               @relation(fields: [categoryId], references: [id])
+  availabilities ApartmentAvailability[]
+  bookings       Booking[]
+  metadata       Json?
+  deletedAt      DateTime?
+}
+
+model Image {
+  id        String   @id @default(uuid())
+  listingId String
+  url       String
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  listing   Listing  @relation(fields: [listingId], references: [id])
+}
+
+model Review {
+  id           String   @id @default(uuid())
+  userId       String
+  listingId    String?
+  targetUserId String
+  rating       Int
+  comment      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id])
+  targetUser   User     @relation("ReceivedReviews", fields: [targetUserId], references: [id])
+  listing      Listing? @relation(fields: [listingId], references: [id])
+}
+
+model Message {
+  id             String        @id @default(cuid())
+  conversationId String
+  senderId       String
+  listingId      String?
+  content        String
+  metadata       Json?
+  read           Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  conversation   Conversation  @relation(fields: [conversationId], references: [id])
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+  listing        Listing?     @relation("ListingMessages", fields: [listingId], references: [id])
+}
+
+model Offer {
+  id        String      @id @default(uuid())
+  listingId String
+  buyerId   String
+  sellerId  String
+  price     Decimal
+  status    OfferStatus @default(PENDING)
+  message   String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  listing   Listing     @relation(fields: [listingId], references: [id])
+  buyer     User        @relation("SentOffers", fields: [buyerId], references: [id])
+  seller    User        @relation("ReceivedOffers", fields: [sellerId], references: [id])
+}
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String
+  slug        String     @unique
+  description String?
+  image       String?
+  parentId    String?
+  active      Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  parent      Category?  @relation("SubCategories", fields: [parentId], references: [id])
+  children    Category[] @relation("SubCategories")
+  listings    Listing[]
+}
+
+model Conversation {
+  id          String    @id @default(cuid())
+  type        String    @default("GENERAL")
+  listingId   String?
+  buyerId     String
+  sellerId    String
+  metadata    Json?
+  messages    Message[]
+  lastMessageAt DateTime @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  listing     Listing?  @relation(fields: [listingId], references: [id])
+  buyer       User      @relation("BuyerConversations", fields: [buyerId], references: [id])
+  seller      User      @relation("SellerConversations", fields: [sellerId], references: [id])
+
+  @@unique([buyerId, sellerId, listingId])
+}
+
+model ApartmentAvailability {
+  id            String   @id @default(uuid())
+  listingId     String
+  startDate     DateTime
+  endDate       DateTime
+  pricePerNight Decimal
+  isBlocked     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  listing       Listing  @relation(fields: [listingId], references: [id])
+}
+
+model Booking {
+  id          String        @id @default(uuid())
+  listingId   String
+  userId      String
+  checkIn     DateTime
+  checkOut    DateTime
+  basePrice   Decimal       @default(0)
+  serviceFee  Decimal       @default(0)
+  totalPrice  Decimal       @default(0)
+  status      BookingStatus @default(PENDING)
+  paymentRef  String?      // Paystack payment reference
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  listing     Listing      @relation(fields: [listingId], references: [id])
+  user        User         @relation(fields: [userId], references: [id])
+  deletedAt   DateTime?
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}

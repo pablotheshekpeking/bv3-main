@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BackWood API Documentation</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Highlight.js for code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        .nav-pills .nav-link.active {
+            background-color: #198754;
+            animation: pulse 2s infinite;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        pre:hover {
+            transform: scale(1.01);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .endpoint {
+            border-left: 4px solid #198754;
+            padding-left: 15px;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+        .endpoint:hover {
+            border-left-width: 8px;
+        }
+        .method {
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        .get { background-color: #0dcaf0; }
+        .post { background-color: #198754; color: white; }
+        .put { background-color: #ffc107; }
+        .delete { background-color: #dc3545; color: white; }
+        .emoji-title {
+            font-size: 2em;
+            margin-right: 10px;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success animate__animated animate__fadeIn">
+        <div class="container">
+            <a class="navbar-brand" href="#">🌲 BackWood API</a>
+        </div>
+    </nav>
+
+    <div class="container my-5">
+        <div class="row">
+            <div class="col-md-3">
+                <nav id="navbar-example3" class="h-100 flex-column align-items-stretch pe-4 border-end">
+                    <nav class="nav nav-pills flex-column">
+                        <a class="nav-link" href="#auth">🔐 Authentication</a>
+                        <a class="nav-link" href="#profile">👤 Profile</a>
+                        <a class="nav-link" href="#listings">📦 Listings</a>
+                        <a class="nav-link" href="#messages">💬 Messages</a>
+                        <a class="nav-link" href="#offers">💰 Offers</a>
+                        <a class="nav-link" href="#reviews">⭐ Reviews</a>
+                        <a class="nav-link" href="#kyc">🪪 KYC</a>
+                        <a class="nav-link" href="#admin">👑 Admin</a>
+                        <a class="nav-link" href="#react-native">📱 React Native</a>
+                        <a class="nav-link" href="#error-handling">⚠️ Error Handling</a>
+                        <a class="nav-link" href="#websockets">🔌 WebSockets</a>
+                        <a class="nav-link" href="#image-guidelines">🖼️ Image Guidelines</a>
+                        <a class="nav-link" href="#categories">📑 Categories</a>
+                    </nav>
+                </nav>
+            </div>
+
+            <div class="col-md-9">
+                <h1 class="animate__animated animate__fadeInDown">🌲 BackWood API Documentation</h1>
+                <p class="lead">Welcome to the BackWood API documentation. This guide will help you integrate with our backend services.</p>
+
+                <!-- Error Handling Section -->
+                <section id="error-handling" class="mb-5">
+                    <h2>⚠️ Error Handling</h2>
+                    <p>All API endpoints follow a consistent error handling pattern:</p>
+                    
+                    <div class="endpoint">
+                        <h4>Error Response Format</h4>
+                        <pre><code class="language-json">{
+  "status": "error" | "fail",
+  "message": "Human readable error message",
+  "errors": [
+    // Optional array of specific error details
+  ],
+  "stack": "Stack trace (development only)"
+}</code></pre>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <h5>Common Error Status Codes</h5>
+                        <ul>
+                            <li>400 - Bad Request (validation errors)</li>
+                            <li>401 - Unauthorized (authentication required)</li>
+                            <li>403 - Forbidden (insufficient permissions)</li>
+                            <li>404 - Not Found</li>
+                            <li>409 - Conflict (e.g., duplicate entry)</li>
+                            <li>422 - Unprocessable Entity</li>
+                            <li>500 - Internal Server Error</li>
+                        </ul>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4>Error Handling in React Native</h4>
+                        <pre><code class="language-javascript">// API error handling utility
+const handleApiError = (error) => {
+  if (error.response) {
+    // Server responded with error
+    const { status, data } = error.response;
+    
+    switch (status) {
+      case 401:
+        // Handle authentication error
+        navigation.navigate('Login');
+        break;
+      case 403:
+        Alert.alert('Access Denied', data.message);
+        break;
+      case 422:
+        // Handle validation errors
+        const errors = data.errors?.join('\n');
+        Alert.alert('Validation Error', errors || data.message);
+        break;
+      default:
+        Alert.alert('Error', data.message || 'Something went wrong');
+    }
+  } else if (error.request) {
+    // Network error
+    Alert.alert('Network Error', 'Please check your internet connection');
+  } else {
+    // Other errors
+    Alert.alert('Error', error.message || 'Something went wrong');
+  }
+};</code></pre>
+                    </div>
+                </section>
+
+                <!-- Authentication Section -->
+                <section id="auth" class="mb-5">
+                    <h2>🔐 Authentication</h2>
+                    <p>All authenticated endpoints require a Bearer token in the Authorization header.</p>
+                    
+                    <div class="endpoint">
+                        <h4><span class="method post">POST</span> /api/auth/register</h4>
+                        <p>Register a new user account and sends welcome email with verification code.</p>
+                        <h5>Request:</h5>
+                        <pre><code class="language-json">{
+  "email": "user@example.com",
+  "password": "StrongPass1!",
+  "firstName": "John",
+  "lastName": "Doe",
+  "phone": "+1234567890"
+}</code></pre>
+                        <h5>Response:</h5>
+                        <pre><code class="language-json">{
+  "message": "User created successfully. Please verify your email.",
+  "token": "jwt_token",
+  "user": {
+    "id": "user_id",
+    "email": "user@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "phone": "+1234567890",
+    "status": "PENDING",
+    "emailVerified": false,
+    "phoneVerified": false,
+    "kycVerified": false
+  }
+}</code></pre>
+                        <div class="alert alert-info">
+                            <strong>Note:</strong> A welcome email with verification code will be sent automatically.
+                        </div>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method post">POST</span> /api/auth/login</h4>
+                        <p>Login to get authentication token.</p>
+                        <pre><code class="language-json">{
+  "email": "user@example.com",
+  "password": "StrongPass1!"
+}</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method post">POST</span> /api/auth/logout</h4>
+                        <p>Invalidate current token.</p>
+                        <pre><code class="language-javascript">// React Native Example
+const logout = async () => {
+  try {
+    await axios.post('/api/auth/logout', {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    // Clear local storage
+    await AsyncStorage.removeItem('token');
+    navigation.replace('Login');
+  } catch (error) {
+    handleApiError(error);
+  }
+};</code></pre>
+                    </div>
+                </section>
+
+                <!-- Verification Section -->
+                <section id="verification" class="mb-5">
+                    <h2>✉️ Email & Verification</h2>
+                    <p>Email verification system with templated emails.</p>
+                    
+                    <div class="endpoint">
+                        <h4><span class="method post">POST</span> /api/verification/send</h4>
+                        <p>Send a verification code to user's email.</p>
+                        <pre><code class="language-json">{
+  "userId": "user_id",
+  "type": "EMAIL"
+}</code></pre>
+                        <h5>Response:</h5>
+                        <pre><code class="language-json">{
+  "message": "Verification code sent to your email"
+}</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method post">POST</span> /api/verification/verify</h4>
+                        <p>Verify email using received code.</p>
+                        <pre><code class="language-json">{
+  "userId": "user_id",
+  "type": "EMAIL",
+  "code": "123456"
+}</code></pre>
+                        <h5>Response:</h5>
+                        <pre><code class="language-json">{
+  "message": "Email verified successfully"
+}</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4>Email Templates</h4>
+                        <p>Available email templates:</p>
+                        <ul>
+                            <li><strong>Welcome Email</strong>
+                                <ul>
+                                    <li>Sent upon registration</li>
+                                    <li>Includes verification code</li>
+                                    <li>Personalized with user's name</li>
+                                </ul>
+                            </li>
+                            <li><strong>Verification Email</strong>
+                                <ul>
+                                    <li>6-digit verification code</li>
+                                    <li>15-minute expiration</li>
+                                    <li>Personalized greeting</li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <h5>Template Variables:</h5>
+                        <pre><code class="language-json">{
+  "firstName": "User's first name",
+  "verificationCode": "6-digit code",
+  "appName": "Application name from env",
+  "year": "Current year"
+}</code></pre>
+                    </div>
+                </section>
+
+                <!-- Messages Section -->
+                <section id="messages" class="mb-5">
+                    <h2>💬 Messages</h2>
+                    
+                    <div class="endpoint">
+                        <h4><span class="method post">POST</span> /api/messages/send</h4>
+                        <p>Send a message to another user, optionally about a specific listing.</p>
+                        <pre><code class="language-json">{
+  "receiverId": "user_id",
+  "content": "Hello, is this item still available?",
+  "conversationId": "optional_conversation_id",
+  "listingId": "optional_listing_id"
+}</code></pre>
+
+                        <h5>Response:</h5>
+                        <pre><code class="language-json">{
+  "status": "success",
+  "message": {
+    "id": "message_id",
+    "content": "Hello, is this item still available?",
+    "sender": {
+      "id": "sender_id",
+      "firstName": "John",
+      "lastName": "Doe",
+      "profileImage": "url"
+    },
+    "listing": {
+      "id": "listing_id",
+      "title": "Item Title",
+      "price": 100
+    },
+    "createdAt": "2024-01-01T00:00:00Z",
+    "read": false
+  }
+}</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method get">GET</span> /api/messages/conversation/{otherId}</h4>
+                        <p>Get conversation history with another user.</p>
+                        <pre><code class="language-javascript">// React Native Example
+const fetchConversation = async (userId) => {
+  try {
+    const response = await axios.get(`/api/messages/conversation/${userId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: {
+        page: currentPage,
+        limit: 20
+      }
+    });
+    
+    setMessages(response.data.messages);
+    setPagination(response.data.pagination);
+    
+  } catch (error) {
+    handleApiError(error);
+  }
+};</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method get">GET</span> /api/messages/unread/count</h4>
+                        <p>Get number of unread messages.</p>
+                        <pre><code class="language-javascript">// React Native Example with WebSocket
+useEffect(() => {
+  // Initial fetch
+  fetchUnreadCount();
+  
+  // Listen for new messages
+  socket.on('newMessage', () => {
+    fetchUnreadCount();
+  });
+  
+  return () => socket.off('newMessage');
+}, []);</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method get">GET</span> /api/messages/conversations</h4>
+                        <p>Get all conversations for the authenticated user</p>
+                        <h5>Response:</h5>
+                        <pre><code class="language-json">{
+  "status": "success",
+  "conversations": [
+    {
+      "id": "conversation_id",
+      "otherUser": {
+        "id": "user_id",
+        "firstName": "John",
+        "lastName": "Doe",
+        "profileImage": "url"
+      },
+      "lastMessage": {
+        "content": "Hello there!",
+        "createdAt": "2024-01-01T00:00:00Z",
+        "read": false
+      },
+      "lastMessageTime": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "pagination": {
+    "total": 10,
+    "pages": 1,
+    "currentPage": 1,
+    "limit": 20
+  }
+}</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4>Sending Messages with Conversation ID</h4>
+                        <p>When sending messages, you can include an existing conversationId:</p>
+                        <pre><code class="language-json">{
+  "receiverId": "user_id",
+  "content": "Hello there!",
+  "conversationId": "existing_conversation_id"
+}</code></pre>
+
+                        <h5>WebSocket Implementation</h5>
+                        <pre><code class="language-javascript">// Initialize socket with conversation
+socket.on('connect', () => {
+  // Join conversation room
+  socket.emit('joinConversation', conversationId);
+});
+
+// Send message with conversation
+socket.emit('message', {
+  receiverId: otherUserId,
+  content: messageText,
+  conversationId: currentConversationId
+});
+
+// Listen for messages in conversation
+socket.on('message:conversation', (message) => {
+  if (message.conversationId === currentConversationId) {
+    // Update conversation messages
+    setMessages(prev => [...prev, message]);
+  }
+});</code></pre>
+
+                        <div class="alert alert-info">
+                            <strong>Note:</strong> If no conversationId is provided, the API will:
+                            <ul>
+                                <li>Check for existing conversation between users</li>
+                                <li>Create new conversation if none exists</li>
+                                <li>Return the conversation ID in the response</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Offers Section -->
+                <section id="offers" class="mb-5">
+                    <h2>💰 Offers</h2>
+                    <p>Make and manage offers through the conversation system.</p>
+                    
+                    <div class="endpoint">
+                        <h4><span class="method post">POST</span> /api/offers</h4>
+                        <p>Create a new offer (starts a conversation)</p>
+                        <h5>Request:</h5>
+                        <pre><code class="language-json">{
+  "listingId": "listing_uuid",
+  "price": 180.00,
+  "message": "Hi, I'm interested in renting this apartment. Would you consider $180 per night?"
+}</code></pre>
+                        <h5>Response:</h5>
+                        <pre><code class="language-json">{
+  "status": "success",
+  "conversation": {
+    "id": "conv_uuid",
+    "type": "OFFER",
+    "listing": {
+      "id": "listing_uuid",
+      "title": "Modern City Loft",
+      "price": 200.00
+    },
+    "latestMessage": {
+      "id": "msg_uuid",
+      "content": "Hi, I'm interested in renting this apartment. Would you consider $180 per night?",
+      "metadata": {
+        "type": "OFFER",
+        "price": 180.00,
+        "status": "PENDING"
+      },
+      "sender": {
+        "firstName": "John",
+        "lastName": "Doe",
+        "profileImage": "url"
+      },
+      "createdAt": "2024-01-30T12:00:00.000Z"
+    }
+  }
+}</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method post">POST</span> /api/offers/{conversationId}/respond</h4>
+                        <p>Respond to an offer in a conversation</p>
+                        <h5>Request:</h5>
+                        <pre><code class="language-json">{
+  "status": "ACCEPTED" | "REJECTED",
+  "message": "Thanks for your offer. I accept the price of $180 per night."
+}</code></pre>
+                        <h5>Response:</h5>
+                        <pre><code class="language-json">{
+  "status": "success",
+  "message": {
+    "id": "msg_uuid",
+    "content": "Thanks for your offer. I accept the price of $180 per night.",
+    "metadata": {
+      "type": "OFFER_RESPONSE",
+      "status": "ACCEPTED",
+      "price": 180.00
+    },
+    "createdAt": "2024-01-30T12:05:00.000Z"
+  }
+}</code></pre>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>Note:</strong> Offers are now handled through the conversation system:
+                        <ul>
+                            <li>Creating an offer starts a new conversation of type "OFFER"</li>
+                            <li>Offer details are stored in message metadata</li>
+                            <li>All offer negotiations happen through messages</li>
+                            <li>Previous conversations are reused if they exist</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Admin Section -->
+                <section id="admin" class="mb-5">
+                    <h2>👑 Admin</h2>
+                    
+                    <div class="endpoint">
+                        <h4><span class="method post">POST</span> /api/admin/login</h4>
+                        <p>Admin login with enhanced security.</p>
+                        <pre><code class="language-json">{
+  "email": "admin@example.com",
+  "password": "AdminPass1!",
+  "totpCode": "123456"  // If 2FA enabled
+}</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method get">GET</span> /api/admin/users</h4>
+                        <p>Get all users with filtering and pagination.</p>
+                        <pre><code class="language-javascript">// React Native Admin Panel Example
+const fetchUsers = async () => {
+  try {
+    const response = await axios.get('/api/admin/users', {
+      headers: { Authorization: `Bearer ${adminToken}` },
+      params: {
+        status: filterStatus,
+        role: filterRole,
+        search: searchQuery,
+        page: currentPage,
+        limit: 20
+      }
+    });
+    
+    setUsers(response.data.users);
+    setPagination(response.data.pagination);
+    
+  } catch (error) {
+    handleApiError(error);
+  }
+};</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method put">PUT</span> /api/admin/users/{userId}</h4>
+                        <p>Update user status or role.</p>
+                        <pre><code class="language-json">{
+  "status": "ACTIVE" | "SUSPENDED" | "BANNED",
+  "role": "USER" | "MODERATOR" | "ADMIN"
+}</code></pre>
+                    </div>
+                </section>
+
+                <!-- WebSockets Section -->
+                <section id="websockets" class="mb-5">
+                    <h2>🔌 WebSocket Integration</h2>
+                    
+                    <div class="endpoint">
+                        <h4>Real-time Messaging Example</h4>
+                        <pre><code class="language-javascript">// React Native WebSocket Setup
+import { io } from 'socket.io-client';
+
+const setupWebSocket = (token) => {
+  const socket = io('YOUR_WEBSOCKET_URL', {
+    auth: { token }
+  });
+
+  socket.on('connect', () => {
+    console.log('Connected to WebSocket');
+  });
+
+  socket.on('newMessage', (message) => {
+    // Update messages in real-time
+    setMessages(prev => [...prev, message]);
+    // Show notification
+    showNotification(message);
+  });
+
+  socket.on('messageRead', ({ messageId }) => {
+    // Update message read status
+    setMessages(prev => prev.map(msg => 
+      msg.id === messageId ? {...msg, read: true} : msg
+    ));
+  });
+
+  return socket;
+};</code></pre>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <h5>WebSocket Events</h5>
+                        <ul>
+                            <li><code>newMessage</code> - Received when a new message arrives</li>
+                            <li><code>messageRead</code> - When messages are marked as read</li>
+                            <li><code>userOnline</code> - When a user comes online</li>
+                            <li><code>userOffline</code> - When a user goes offline</li>
+                            <li><code>typing</code> - When someone is typing</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- React Native Section -->
+                <section id="react-native" class="mb-5">
+                    <h2>📱 React Native Integration</h2>
+                    
+                    <div class="endpoint">
+                        <h4>API Client Setup</h4>
+                        <pre><code class="language-javascript">// api/client.js
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const api = axios.create({
+  baseURL: 'YOUR_API_URL',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Add token to requests
+api.interceptors.request.use(async (config) => {
+  const token = await AsyncStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Handle token expiration
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      await AsyncStorage.removeItem('token');
+      // Navigate to login
+      navigation.replace('Login');
+    }
+    return Promise.reject(error);
+  }
+);</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4>Custom Hooks Example</h4>
+                        <pre><code class="language-javascript">// hooks/useMessages.js
+export const useMessages = (conversationId) => {
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get(
+          `/messages/conversation/${conversationId}`
+        );
+        setMessages(response.data.messages);
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMessages();
+  }, [conversationId]);
+
+  const sendMessage = async (content) => {
+    try {
+      const response = await api.post('/messages/send', {
+        receiverId: conversationId,
+        content
+      });
+      setMessages(prev => [...prev, response.data.message]);
+      return response.data.message;
+    } catch (err) {
+      setError(err);
+      throw err;
+    }
+  };
+
+  return { messages, loading, error, sendMessage };
+};</code></pre>
+                    </div>
+                </section>
+
+                <!-- Profile Section -->
+                <section id="profile" class="mb-5">
+                    <h2>👤 Profile</h2>
+                    <p>Manage user profiles and settings.</p>
+                    
+                    <div class="endpoint">
+                        <h4><span class="method get">GET</span> /api/profile</h4>
+                        <p>Get current user's profile</p>
+                        <h5>Response:</h5>
+                        <pre><code class="language-json">{
+  "user": {
+    "id": "user_id",
+    "email": "user@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "phone": "+1234567890",
+    "avatar": "url_to_avatar",
+    "status": "ACTIVE",
+    "emailVerified": true,
+    "phoneVerified": true,
+    "kycVerified": false,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "lastLogin": "2024-01-01T00:00:00Z"
+  }
+}</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method put">PUT</span> /api/profile</h4>
+                        <p>Update user profile</p>
+                        <h5>Request:</h5>
+                        <pre><code class="language-json">{
+  "firstName": "John",
+  "lastName": "Doe",
+  "phone": "+1234567890",
+  "avatar": "base64_image_data"
+}</code></pre>
+                    </div>
+                </section>
+
+                <!-- Listings Section -->
+                <section id="listings" class="mb-5">
+                    <h2>📦 Listings</h2>
+                    <p>Create and manage property listings with extended metadata support.</p>
+                    
+                    <div class="endpoint">
+                        <h4><span class="method post">POST</span> /api/listings</h4>
+                        <p>Create a new property listing with metadata.</p>
+                        <div class="alert alert-info">
+                            <strong>Requirements:</strong>
+                            <ul>
+                                <li>User must be a verified vendor</li>
+                                <li>At least one image required</li>
+                                <li>Valid location coordinates</li>
+                            </ul>
+                        </div>
+                        <h5>Request:</h5>
+                        <pre><code class="language-json">{
+  "title": "Luxury Beach Villa",
+  "description": "Beautiful beachfront property",
+  "price": 300,
+  "type": "APARTMENT_RENT",
+  "currency": "USD",
+  "location": {
+    "address": "123 Beach Rd",
+    "city": "Miami",
+    "coordinates": {"lat": 25.7617, "lng": -80.1918}
+  },
+  "features": {
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "sqft": 2000,
+    "parking": true,
+    "furnished": true
+  },
+  "metadata": {
+    "amenities": ["pool", "gym", "spa"],
+    "checkInTime": "15:00",
+    "checkOutTime": "11:00",
+    "houseRules": ["No smoking", "No parties"],
+    "cancellationPolicy": "flexible",
+    "minimumStay": 2,
+    "maxGuests": 6,
+    "additionalFees": {
+      "cleaning": 50,
+      "security": 200
+    }
+  },
+  "imageUrls": [
+    "https://example.com/image1.jpg",
+    "https://example.com/image2.jpg"
+  ]
+}</code></pre>
+                        <h5>Success Response (201):</h5>
+                        <pre><code class="language-json">{
+  "status": "success",
+  "listing": {
+    "id": "listing_uuid",
+    "title": "Luxury Beach Villa",
+    "status": "DRAFT",
+    "images": [
+      {
+        "url": "https://example.com/image1.jpg",
+        "isPrimary": true
+      }
+    ]
+  }
+}</code></pre>
+                        <h5>Error Response (403):</h5>
+                        <pre><code class="language-json">{
+  "error": "Only vendors can create listings"
+}</code></pre>
+                    </div>
+
+                    <!-- Keep existing endpoints documentation below -->
+                </section>
+
+                <!-- Reviews Section -->
+                <section id="reviews" class="mb-5">
+                    <h2>⭐ Reviews</h2>
+                    <p>User and listing review system with ratings.</p>
+                    
+                    <div class="endpoint">
+                        <h4><span class="method post">POST</span> /api/reviews</h4>
+                        <p>Create a review for a user or listing</p>
+                        <h5>Request:</h5>
+                        <pre><code class="language-json">{
+  "targetUserId": "user_uuid",
+  "listingId": "optional_listing_uuid",
+  "rating": 5,
+  "comment": "Great experience! Very professional and responsive."
+}</code></pre>
+
+                        <div class="alert alert-info">
+                            <strong>Validation:</strong>
+                            <ul>
+                                <li>Rating must be between 1 and 5</li>
+                                <li>Comment is optional</li>
+                                <li>Either targetUserId or listingId must be provided</li>
+                            </ul>
+                        </div>
+
+                        <h5>Success Response (201):</h5>
+                        <pre><code class="language-json">{
+  "status": "success",
+  "review": {
+    "id": "review_uuid",
+    "rating": 5,
+    "comment": "Great experience! Very professional and responsive.",
+    "createdAt": "2024-01-30T12:00:00.000Z",
+    "user": {
+      "id": "reviewer_uuid",
+      "firstName": "John",
+      "lastName": "Doe",
+      "profileImage": "url"
+    }
+  }
+}</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method get">GET</span> /api/reviews/user/{userId}</h4>
+                        <p>Get reviews for a specific user</p>
+                        <h5>Query Parameters:</h5>
+                        <ul>
+                            <li><code>page</code> - Page number (default: 1)</li>
+                            <li><code>limit</code> - Reviews per page (default: 10)</li>
+                            <li><code>sort</code> - Sort order (recent/rating)</li>
+                        </ul>
+
+                        <h5>Response:</h5>
+                        <pre><code class="language-json">{
+  "status": "success",
+  "reviews": [
+    {
+      "id": "review_uuid",
+      "rating": 5,
+      "comment": "Great experience!",
+      "createdAt": "2024-01-30T12:00:00.000Z",
+      "user": {
+        "id": "reviewer_uuid",
+        "firstName": "John",
+        "lastName": "Doe",
+        "profileImage": "url"
+      },
+      "listing": {
+        "id": "listing_uuid",
+        "title": "Property Title"
+      }
+    }
+  ],
+  "pagination": {
+    "total": 50,
+    "pages": 5,
+    "currentPage": 1,
+    "limit": 10
+  }
+}</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method get">GET</span> /api/reviews/listing/{listingId}</h4>
+                        <p>Get reviews for a specific listing</p>
+                        
+                        <div class="alert alert-success">
+                            <strong>Features:</strong>
+                            <ul>
+                                <li>Pagination support</li>
+                                <li>Sort by date or rating</li>
+                                <li>Includes reviewer details</li>
+                                <li>Average rating calculation</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- KYC Section -->
+                <section id="kyc" class="mb-5">
+                    <h2>🪪 KYC</h2>
+                    <p>Know Your Customer verification system.</p>
+                    
+                    <div class="endpoint">
+                        <h4><span class="method post">POST</span> /api/kyc/submit</h4>
+                        <p>Submit KYC verification documents</p>
+                        <h5>Request:</h5>
+                        <pre><code class="language-json">{
+  "documentType": "ID_CARD" | "PASSPORT" | "DRIVERS_LICENSE",
+  "idImageUrl": "url_to_id_image",
+  "selfieImageUrl": "url_to_selfie_image"
+}</code></pre>
+                        <div class="alert alert-info">
+                            <strong>Note:</strong> Images must be uploaded separately using the image upload endpoint before submitting KYC.
+                        </div>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method get">GET</span> /api/kyc/status</h4>
+                        <p>Check KYC verification status</p>
+                        <h5>Response:</h5>
+                        <pre><code class="language-json">{
+  "status": "PENDING" | "VERIFIED" | "REJECTED",
+  "message": "Optional status message",
+  "submittedAt": "2024-01-01T00:00:00Z",
+  "verifiedAt": "2024-01-02T00:00:00Z"
+}</code></pre>
+                    </div>
+                </section>
+
+                <!-- Image Guidelines Section -->
+                <section id="image-guidelines" class="mb-5">
+                    <h2>🖼️ Image Guidelines</h2>
+                    <p>Guidelines and endpoints for image handling.</p>
+
+                    <div class="endpoint">
+                        <h4><span class="method post">POST</span> /api/images/upload</h4>
+                        <p>Upload images for listings or KYC</p>
+                        <h5>Request:</h5>
+                        <pre><code class="language-json">{
+  "image": "base64_encoded_image",
+  "type": "LISTING" | "KYC_ID" | "KYC_SELFIE",
+  "metadata": {
+    "width": 1024,
+    "height": 768,
+    "size": 1048576
+  }
+}</code></pre>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <h5>Image Requirements</h5>
+                        <ul>
+                            <li>Maximum file size: 5MB</li>
+                            <li>Supported formats: JPG, PNG</li>
+                            <li>Minimum dimensions: 640x480 pixels</li>
+                            <li>Maximum dimensions: 4096x4096 pixels</li>
+                            <li>Aspect ratio: Between 4:3 and 16:9</li>
+                        </ul>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4>Image Processing</h4>
+                        <ul>
+                            <li>Images are automatically compressed and optimized</li>
+                            <li>EXIF data is stripped for privacy</li>
+                            <li>Multiple sizes are generated for responsive display</li>
+                            <li>Watermarking is applied to listing images</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Add new Categories section before the Offers section -->
+                <section id="categories" class="mb-5">
+                    <h2>📑 Categories</h2>
+                    <p>Browse and manage listing categories.</p>
+                    
+                    <div class="endpoint">
+                        <h4><span class="method get">GET</span> /api/categories</h4>
+                        <p>Get all available categories</p>
+                        <h5>Response:</h5>
+                        <pre><code class="language-json">{
+  "status": "success",
+  "categories": [
+    {
+      "id": "category_id",
+      "name": "Real Estate",
+      "slug": "real-estate",
+      "description": "Properties for rent and sale"
+    },
+    {
+      "name": "Vehicles",
+      "slug": "vehicles",
+      "description": "Cars, motorcycles, and other vehicles"
+    }
+  ]
+}</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method get">GET</span> /api/categories/:slug/listings</h4>
+                        <p>Get listings by category</p>
+                        <h5>Query Parameters:</h5>
+                        <ul>
+                            <li><code>page</code> - Page number (default: 1)</li>
+                            <li><code>limit</code> - Listings per page (default: 20)</li>
+                            <li><code>sort</code> - Sort order (recent/price)</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Add this section after the Authentication section -->
+                <section id="bookings" class="mb-5">
+                    <h2>📅 Bookings</h2>
+                    <p>Complete booking management system with payment integration.</p>
+
+                    <div class="alert alert-info mb-4">
+                        <h5>Key Features</h5>
+                        <ul>
+                            <li>Automatic availability checking</li>
+                            <li>Prevents double bookings for same dates</li>
+                            <li>Integrated Paystack payment processing</li>
+                            <li>Soft delete functionality</li>
+                            <li>Payment retry for pending bookings</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="endpoint">
+                        <h4><span class="method post">POST</span> /api/bookings</h4>
+                        <p>Create a new booking for an apartment.</p>
+                        <h5>Request:</h5>
+                        <pre><code class="language-json">{
+  "listingId": "listing_uuid",
+  "checkIn": "2024-04-15",
+  "checkOut": "2024-04-20"
+}</code></pre>
+                        <h5>Success Response (201):</h5>
+                        <pre><code class="language-json">{
+  "status": "success",
+  "booking": {
+    "id": "booking_uuid",
+    "listingId": "listing_uuid",
+    "userId": "user_uuid",
+    "checkIn": "2024-04-15T00:00:00.000Z",
+    "checkOut": "2024-04-20T00:00:00.000Z",
+    "totalPrice": "800.00",
+    "status": "PENDING",
+    "listing": {
+      "title": "Modern City Loft",
+      "images": [{ "url": "image_url" }]
+    }
+  },
+  "payment": {
+    "authorizationUrl": "https://checkout.paystack.com/...",
+    "reference": "BOOK-booking_uuid"
+  }
+}</code></pre>
+                        <h5>Error Responses:</h5>
+                        <pre><code class="language-json">{
+  "error": "You already have a pending booking for these dates" // 400
+}
+// OR
+{
+  "error": "Dates not available" // 400
+}
+// OR
+{
+  "error": "Invalid date range" // 400
+}</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method get">GET</span> /api/bookings/my-bookings</h4>
+                        <p>Retrieve all active bookings for the authenticated user.</p>
+                        <h5>Success Response (200):</h5>
+                        <pre><code class="language-json">{
+  "status": "success",
+  "bookings": [{
+    "id": "booking_uuid",
+    "status": "PENDING",
+    "totalPrice": "800.00",
+    "checkIn": "2024-04-15T00:00:00.000Z",
+    "checkOut": "2024-04-20T00:00:00.000Z",
+    "listing": {
+      "title": "Modern City Loft",
+      "type": "APARTMENT_RENT",
+      "price": "200",
+      "currency": "USD",
+      "location": {
+        "city": "New York",
+        "address": "456 Downtown Ave"
+      },
+      "metadata": {
+        "amenities": ["pool", "gym"],
+        "checkInTime": "15:00",
+        "checkOutTime": "11:00",
+        "houseRules": ["No smoking"]
+      },
+      "primaryImage": "image_url"
+    }
+  }]
+}</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method post">POST</span> /api/bookings/:bookingId/verify-payment</h4>
+                        <p>Retry payment for a pending booking.</p>
+                        <div class="alert alert-warning">
+                            <strong>Note:</strong> Only works for bookings in PENDING status.
+                        </div>
+                        <h5>Success Response (200):</h5>
+                        <pre><code class="language-json">{
+  "status": "success",
+  "booking": {
+    "id": "booking_uuid",
+    "status": "PENDING",
+    "totalPrice": "800.00"
+  },
+  "payment": {
+    "authorizationUrl": "https://checkout.paystack.com/...",
+    "reference": "BOOK-booking_uuid-timestamp"
+  }
+}</code></pre>
+                        <h5>Error Response (400):</h5>
+                        <pre><code class="language-json">{
+  "error": "Booking is not in pending status"
+}</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4><span class="method delete">DELETE</span> /api/bookings/:bookingId</h4>
+                        <p>Soft delete (cancel) a booking.</p>
+                        <div class="alert alert-info">
+                            <strong>Effects:</strong>
+                            <ul>
+                                <li>Sets deletedAt timestamp</li>
+                                <li>Changes status to CANCELLED</li>
+                                <li>Booking will not appear in my-bookings list</li>
+                            </ul>
+                        </div>
+                        <h5>Success Response (200):</h5>
+                        <pre><code class="language-json">{
+  "status": "success",
+  "message": "Booking cancelled successfully"
+}</code></pre>
+                    </div>
+
+                    <div class="endpoint">
+                        <h4>Webhook Handling</h4>
+                        <p>Automatic payment confirmation via Paystack webhook.</p>
+                        <pre><code class="language-javascript">// Webhook response handling
+{
+  "event": "charge.success",
+  "data": {
+    "reference": "BOOK-booking_uuid",
+    "metadata": {
+      "bookingId": "booking_uuid",
+      "type": "booking"
+    }
+  }
+}</code></pre>
+                        <div class="alert alert-success">
+                            <strong>On successful payment:</strong>
+                            <ul>
+                                <li>Booking status updated to CONFIRMED</li>
+                                <li>Payment reference stored</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</body>
+</html> 
