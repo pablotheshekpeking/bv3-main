@@ -3,6 +3,7 @@ import AdminJSExpress from '@adminjs/express';
 import { Database, Resource, getModelByName } from '@adminjs/prisma';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import slugify from 'slugify';
 
 const prisma = new PrismaClient();
 AdminJS.registerAdapter({ Database, Resource });
@@ -80,6 +81,16 @@ const adminOptions = {
           parentId: {
             type: 'reference',
             reference: 'Category'
+          }
+        },
+        actions: {
+          new: {
+            before: async (request) => {
+              if (request.payload.name) {
+                request.payload.slug = slugify(request.payload.name, { lower: true });
+              }
+              return request;
+            }
           }
         }
       }
