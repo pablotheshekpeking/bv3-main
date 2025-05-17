@@ -167,6 +167,10 @@ export const getAllListings = async (req, res) => {
             limit = 20
         } = req.query;
 
+        // Convert string parameters to integers
+        const pageNum = parseInt(page, 10);
+        const limitNum = parseInt(limit, 10);
+
         const where = {
             status: 'ACTIVE',
             ...(categoryId && { categoryId }),
@@ -196,8 +200,8 @@ export const getAllListings = async (req, res) => {
                         }
                     }
                 },
-                skip: (page - 1) * limit,
-                take: limit,
+                skip: (pageNum - 1) * limitNum,
+                take: limitNum, // Now using the integer value
                 orderBy: { createdAt: 'desc' }
             }),
             prisma.listing.count({ where })
@@ -207,11 +211,12 @@ export const getAllListings = async (req, res) => {
             listings,
             pagination: {
                 total,
-                pages: Math.ceil(total / limit),
-                currentPage: parseInt(page)
+                pages: Math.ceil(total / limitNum),
+                currentPage: pageNum
             }
         });
     } catch (error) {
+        console.error('Error in getAllListings:', error);
         res.status(400).json({ error: error.message });
     }
 };
