@@ -3,9 +3,8 @@ import crypto from 'crypto';
 
 export class RemitaService {
   constructor() {
-    this.apiKey = process.env.REMITA_API_KEY;
-    this.merchantId = process.env.REMITA_MERCHANT_ID;
-    this.serviceTypeId = process.env.REMITA_SERVICE_TYPE_ID;
+    this.publicKey = 'pk_test_dX/o1ZX07oXGdewQ/COMTN+q/LjAB7/b/L9ZbMhiUzX3+0jGrlUS9tQjqkQue7jx';
+    this.secretKey = 'sk_test_dX/o1ZX07oXke18iOL0Zr6Hp+vPQ4amTeV2jvnpCuH/fe5wsDmFqFaXT72WO9RcP';
     this.baseURL = 'https://api.remita.net/api/v1';
   }
 
@@ -23,7 +22,6 @@ export class RemitaService {
       }
 
       const payload = {
-        serviceTypeId: this.serviceTypeId,
         amount: Math.round(data.amount),
         orderId: data.reference,
         payerName: data.payerName || 'Customer',
@@ -38,14 +36,17 @@ export class RemitaService {
         ]
       };
 
+      // Generate signature
+      const signature = this.generateSignature(payload);
+
       const response = await axios.post(
         `${this.baseURL}/merchant/init`,
         payload,
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`,
-            'MerchantId': this.merchantId
+            'Authorization': `Bearer ${this.publicKey}`,
+            'X-Signature': signature
           }
         }
       );
@@ -60,12 +61,15 @@ export class RemitaService {
 
   async verifyPaymentStatus(reference) {
     try {
+      // Generate signature for verification request
+      const signature = this.generateSignature({ orderId: reference });
+
       const response = await axios.get(
-        `${this.baseURL}/merchant/${this.merchantId}/order/${reference}/status`,
+        `${this.baseURL}/merchant/order/${reference}/status`,
         {
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'MerchantId': this.merchantId
+            'Authorization': `Bearer ${this.publicKey}`,
+            'X-Signature': signature
           }
         }
       );
@@ -80,11 +84,16 @@ export class RemitaService {
     }
   }
 
-  verifyWebhookSignature(signature, requestBody) {
-    const hash = crypto
-      .createHmac('sha512', this.apiKey)
-      .update(JSON.stringify(requestBody))
+  generateSignature(payload) {
+    const stringifiedPayload = JSON.stringify(payload);
+    return crypto
+      .createHmac('sha512', this.secretKey)
+      .update(stringifiedPayload)
       .digest('hex');
+  }
+
+  verifyWebhookSignature(signature, requestBody) {
+    const hash = this.generateSignature(requestBody);
     return hash === signature;
   }
 } 
