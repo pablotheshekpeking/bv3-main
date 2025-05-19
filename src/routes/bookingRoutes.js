@@ -3,7 +3,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import { 
   createBooking, 
   getUserBookings,
-  confirmBooking,
+  verifyPayment,
   deleteBooking
 } from '../controllers/bookingController.js';
 
@@ -11,7 +11,7 @@ const router = express.Router();
 
 router.post('/', authenticateToken, createBooking);
 router.get('/my-bookings', authenticateToken, getUserBookings);
-router.post('/:bookingId/confirm', authenticateToken, confirmBooking);
+router.post('/:bookingId/verify-payment', authenticateToken, verifyPayment);
 router.delete('/:bookingId', authenticateToken, deleteBooking);
 
 export default router; 
