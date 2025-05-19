@@ -1,9 +1,9 @@
 import { PrismaClient } from '@prisma/client';
-import { PaystackService } from '../services/paystackService.js';
+import { RemitaService } from '../services/remitaService.js';
 import { APIError } from '../utils/errors.js';
 
 const prisma = new PrismaClient();
-const paystackService = new PaystackService();
+const remitaService = new RemitaService();
 
 export const getUserPoints = async (req, res) => {
   try {
@@ -71,25 +71,22 @@ export const initializePointsPurchase = async (req, res) => {
       where: { id: userId },
       select: {
         email: true,
-        payments: {
-          where: {
-            provider: 'PAYSTACK',
-            status: 'PENDING',
-            metadata: {
-              path: ['type'],
-              equals: 'points'
-            }
-          },
-          orderBy: {
-            createdAt: 'desc'
-          },
-          take: 1
-        }
+        firstName: true,
+        lastName: true
       }
     });
 
     // Check for existing pending points payment
-    const existingPayment = user.payments[0];
+    const existingPayment = await prisma.payment.findFirst({
+      where: {
+        userId,
+        status: 'PENDING',
+        metadata: {
+          path: ['type'],
+          equals: 'points'
+        }
+      }
+    });
     if (existingPayment && 
         (new Date() - new Date(existingPayment.createdAt)) < 30 * 60 * 1000) {
       return res.json({
@@ -103,10 +100,12 @@ export const initializePointsPurchase = async (req, res) => {
 
     // Initialize new payment
     const paymentRef = `POINTS-${userId}-${Date.now()}`;
-    const paystackResponse = await paystackService.initializeTransaction({
+    const remitaResponse = await remitaService.initializeTransaction({
       email: user.email,
-      amount: amount * 100, // Convert to kobo/cents
+      amount: amount * 100,
       reference: paymentRef,
+      payerName: `${user.firstName} ${user.lastName}`,
+      description: 'Points Purchase',
       metadata: {
         userId,
         type: 'points',
@@ -121,11 +120,11 @@ export const initializePointsPurchase = async (req, res) => {
         amount,
         reference: paymentRef,
         status: 'PENDING',
-        provider: 'PAYSTACK',
+        provider: 'REMITA',
         metadata: {
           type: 'points',
           pointsAmount: amount,
-          authorizationUrl: paystackResponse.data.authorization_url
+          authorizationUrl: remitaResponse.authorizationUrl
         }
       }
     });
@@ -133,7 +132,7 @@ export const initializePointsPurchase = async (req, res) => {
     res.json({
       status: 'success',
       payment: {
-        authorizationUrl: paystackResponse.data.authorization_url,
+        authorizationUrl: remitaResponse.authorizationUrl,
         reference: paymentRef
       }
     });
@@ -166,7 +165,7 @@ export const verifyPointsPayment = async (req, res) => {
       throw new APIError('Payment not found or already processed', 404);
     }
 
-    const isPaymentSuccessful = await paystackService.verifyPaymentStatus(reference);
+    const isPaymentSuccessful = await remitaService.verifyPaymentStatus(reference);
     
     if (isPaymentSuccessful) {
       await prisma.$transaction(async (prisma) => {
