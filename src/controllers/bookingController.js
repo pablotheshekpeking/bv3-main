@@ -1,9 +1,9 @@
 import { PrismaClient } from '@prisma/client';
-import { RemitaService } from '../services/remitaService.js';
+import { PaystackService } from '../services/paystackService.js';
 import { APIError } from '../utils/errors.js';
 
 const prisma = new PrismaClient();
-const remitaService = new RemitaService();
+const paystackService = new PaystackService();
 
 export const createBooking = async (req, res) => {
   try {
@@ -136,14 +136,11 @@ export const createBooking = async (req, res) => {
       }
     });
 
-    // Initialize Remita transaction
-    const remitaResponse = await remitaService.initializeTransaction({
+    // Initialize Paystack transaction
+    const paystackResponse = await paystackService.initializeTransaction({
       email: booking.user.email,
       amount: Number(booking.totalPrice) * 100,
       reference: paymentRef,
-      payerName: `${booking.user.firstName} ${booking.user.lastName}`,
-      phone: booking.user.phone,
-      description: `Booking for ${booking.listing.title}`,
       metadata: {
         bookingId: booking.id,
         type: 'booking',
@@ -167,7 +164,7 @@ export const createBooking = async (req, res) => {
         }
       },
       payment: {
-        authorizationUrl: remitaResponse.authorizationUrl,
+        authorizationUrl: paystackResponse.data.authorization_url,
         reference: paymentRef
       }
     });
@@ -266,7 +263,7 @@ export const verifyPayment = async (req, res) => {
 
     // If reference is provided, verify the payment status
     if (reference) {
-      const isPaymentSuccessful = await remitaService.verifyPaymentStatus(reference);
+      const isPaymentSuccessful = await paystackService.verifyPaymentStatus(reference);
       
       if (isPaymentSuccessful) {
         await prisma.$transaction(async (prisma) => {
@@ -321,13 +318,10 @@ export const verifyPayment = async (req, res) => {
 
     // Create new payment only if no recent pending payment exists
     const paymentRef = `BOOK-${booking.id}-${Date.now()}`;
-    const remitaResponse = await remitaService.initializeTransaction({
+    const paystackResponse = await paystackService.initializeTransaction({
       email: booking.user.email,
       amount: Number(booking.totalPrice) * 100,
       reference: paymentRef,
-      payerName: `${booking.user.firstName} ${booking.user.lastName}`,
-      phone: booking.user.phone,
-      description: `Booking for ${booking.listing.title}`,
       metadata: {
         bookingId: booking.id,
         type: 'booking',
@@ -346,7 +340,7 @@ export const verifyPayment = async (req, res) => {
           type: 'booking',
           basePrice: booking.basePrice,
           serviceFee: booking.serviceFee,
-          authorizationUrl: remitaResponse.authorizationUrl
+          authorizationUrl: paystackResponse.data.authorization_url
         }
       }
     });
@@ -355,7 +349,7 @@ export const verifyPayment = async (req, res) => {
       status: 'success',
       booking,
       payment: {
-        authorizationUrl: remitaResponse.authorizationUrl,
+        authorizationUrl: paystackResponse.data.authorization_url,
         reference: paymentRef
       }
     });
