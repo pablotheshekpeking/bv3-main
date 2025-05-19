@@ -42,15 +42,6 @@ export const createBooking = async (req, res) => {
       throw new APIError('You already have a pending booking for these dates', 400);
     }
 
-    // First verify the user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!user) {
-      throw new APIError('User not found', 404);
-    }
-
     // Verify the listing exists
     const listing = await prisma.listing.findUnique({
       where: { id: listingId }
@@ -87,7 +78,7 @@ export const createBooking = async (req, res) => {
     const basePrice = availability.pricePerNight * nights;
     const totalPrice = basePrice + Number(serviceFee);
 
-    // Create booking
+    // Create booking with PENDING status
     const booking = await prisma.booking.create({
       data: {
         userId,
@@ -111,46 +102,12 @@ export const createBooking = async (req, res) => {
         },
         user: {
           select: {
-            email: true
+            email: true,
+            firstName: true,
+            lastName: true
           }
         }
       }
-    });
-
-    // First, generate the payment reference
-    const paymentRef = `BOOK-${booking.id}`;
-
-    // Then create the payment record
-    const payment = await prisma.payment.create({
-      data: {
-        userId,
-        bookingId: booking.id,
-        amount: totalPrice,
-        reference: paymentRef,
-        status: 'PENDING',
-        metadata: {
-          type: 'booking',
-          basePrice,
-          serviceFee
-        }
-      }
-    });
-
-    // Initialize Paystack transaction
-    const paystackResponse = await paystackService.initializeTransaction({
-      email: booking.user.email,
-      amount: Number(booking.totalPrice) * 100,
-      reference: paymentRef,
-      metadata: {
-        bookingId: booking.id,
-        type: 'booking',
-        userId: userId
-      }
-    });
-
-    await prisma.booking.update({
-      where: { id: booking.id },
-      data: { paymentRef }
     });
 
     res.status(201).json({
@@ -162,10 +119,6 @@ export const createBooking = async (req, res) => {
           serviceFee,
           totalPrice
         }
-      },
-      payment: {
-        authorizationUrl: paystackResponse.data.authorization_url,
-        reference: paymentRef
       }
     });
   } catch (error) {
@@ -224,10 +177,10 @@ export const getUserBookings = async (req, res) => {
   }
 };
 
-export const verifyPayment = async (req, res) => {
+export const confirmBooking = async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { reference } = req.query;
+    const { transactionId } = req.body;
     const userId = req.user.userId;
 
     const booking = await prisma.booking.findFirst({
@@ -235,22 +188,6 @@ export const verifyPayment = async (req, res) => {
         id: bookingId,
         userId,
         status: 'PENDING'
-      },
-      include: {
-        user: {
-          select: {
-            email: true
-          }
-        },
-        payments: {
-          where: {
-            status: 'PENDING'
-          },
-          orderBy: {
-            createdAt: 'desc'
-          },
-          take: 1
-        }
       }
     });
 
@@ -258,103 +195,53 @@ export const verifyPayment = async (req, res) => {
       throw new APIError('Booking not found or not in pending status', 404);
     }
 
-    // Check if there's an existing pending payment
-    const existingPayment = booking.payments[0];
-
-    // If reference is provided, verify the payment status
-    if (reference) {
-      const isPaymentSuccessful = await paystackService.verifyPaymentStatus(reference);
-      
-      if (isPaymentSuccessful) {
-        await prisma.$transaction(async (prisma) => {
-          // Update booking status
-          await prisma.booking.update({
-            where: { id: bookingId },
-            data: { 
-              status: 'CONFIRMED',
-              paymentRef: reference
-            }
-          });
-
-          // Update payment status
-          await prisma.payment.update({
-            where: { reference },
-            data: { status: 'CONFIRMED' }
-          });
-
-          // Block the dates in availability
-          await prisma.apartmentAvailability.updateMany({
-            where: {
-              listingId: booking.listingId,
-              startDate: { lte: booking.checkIn },
-              endDate: { gte: booking.checkOut }
-            },
-            data: {
-              isBlocked: true
-            }
-          });
-        });
-
-        return res.json({
-          status: 'success',
-          message: 'Payment verified successfully',
-          booking: { ...booking, status: 'CONFIRMED' }
-        });
-      }
-    }
-
-    // If there's an existing pending payment and it's less than 30 minutes old, return the same URL
-    if (existingPayment && 
-        (new Date() - new Date(existingPayment.createdAt)) < 30 * 60 * 1000) {
-      return res.json({
-        status: 'success',
-        booking,
-        payment: {
-          authorizationUrl: existingPayment.metadata?.authorizationUrl,
-          reference: existingPayment.reference
-        }
-      });
-    }
-
-    // Create new payment only if no recent pending payment exists
-    const paymentRef = `BOOK-${booking.id}-${Date.now()}`;
-    const paystackResponse = await paystackService.initializeTransaction({
-      email: booking.user.email,
-      amount: Number(booking.totalPrice) * 100,
-      reference: paymentRef,
-      metadata: {
-        bookingId: booking.id,
-        type: 'booking',
-        userId: userId
-      }
-    });
-
-    await prisma.payment.create({
+    // Create payment record
+    const payment = await prisma.payment.create({
       data: {
         userId,
         bookingId: booking.id,
         amount: booking.totalPrice,
-        reference: paymentRef,
-        status: 'PENDING',
+        reference: transactionId,
+        status: 'CONFIRMED',
         metadata: {
           type: 'booking',
           basePrice: booking.basePrice,
-          serviceFee: booking.serviceFee,
-          authorizationUrl: paystackResponse.data.authorization_url
+          serviceFee: booking.serviceFee
         }
       }
     });
 
+    // Update booking status and block dates
+    await prisma.$transaction(async (prisma) => {
+      // Update booking status
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: { 
+          status: 'CONFIRMED',
+          paymentRef: transactionId
+        }
+      });
+
+      // Block the dates in availability
+      await prisma.apartmentAvailability.updateMany({
+        where: {
+          listingId: booking.listingId,
+          startDate: { lte: booking.checkIn },
+          endDate: { gte: booking.checkOut }
+        },
+        data: {
+          isBlocked: true
+        }
+      });
+    });
+
     res.json({
       status: 'success',
-      booking,
-      payment: {
-        authorizationUrl: paystackResponse.data.authorization_url,
-        reference: paymentRef
-      }
+      message: 'Booking confirmed successfully',
+      booking: { ...booking, status: 'CONFIRMED' }
     });
   } catch (error) {
-    console.error('Payment verification error:', error);
+    console.error('Booking confirmation error:', error);
     res.status(error.statusCode || 500).json({ 
       error: error.message || 'Internal server error' 
     });
