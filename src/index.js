@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { adminJs, adminRouter } from './admin/index.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { handleFlutterwaveWebhook } from './controllers/webhookController.js';
 
 // Import routes
 import authRoutes from './routes/authRoutes.js';
@@ -21,7 +22,7 @@ import reviewRoutes from './routes/reviewRoutes.js';
 import pointsRoutes from './routes/pointsRoutes.js';
 import vendorRoutes from './routes/vendorRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
-import { handlePaystackWebhook } from './controllers/webhookController.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -40,8 +41,9 @@ app.use(cors({
   credentials: true
 }));
 
-// Paystack webhook route - needs raw body for signature verification
-app.use('/api/webhook/paystack', express.raw({ type: 'application/json' }));
+// Webhook routes - need raw body for signature verification
+//app.use('/api/webhook/paystack', express.raw({ type: 'application/json' }));
+app.use('/api/webhook/flutterwave', express.raw({ type: 'application/json' }));
 
 // Admin panel route - before body parser
 app.use(adminJs.options.rootPath, adminRouter);
@@ -63,9 +65,11 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/points', pointsRoutes);
 app.use('/api/vendor', vendorRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/payments', paymentRoutes);
 
-// Paystack webhook route
-app.post('/api/webhook/paystack', handlePaystackWebhook);
+// Webhook routes
+//app.post('/api/webhook/paystack', handlePaystackWebhook);
+app.post('/api/webhook/flutterwave', handleFlutterwaveWebhook);
 
 // Add error handler last
 app.use(errorHandler);

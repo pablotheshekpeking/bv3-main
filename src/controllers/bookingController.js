@@ -1,9 +1,9 @@
 import { PrismaClient } from '@prisma/client';
-import { PaystackService } from '../services/paystackService.js';
+import { FlutterwaveService } from '../services/flutterwaveService.js';
 import { APIError } from '../utils/errors.js';
 
 const prisma = new PrismaClient();
-const paystackService = new PaystackService();
+const flutterwaveService = new FlutterwaveService();
 
 export const createBooking = async (req, res) => {
   try {
@@ -111,16 +111,18 @@ export const createBooking = async (req, res) => {
         },
         user: {
           select: {
-            email: true
+            email: true,
+            firstName: true,
+            lastName: true
           }
         }
       }
     });
 
-    // First, generate the payment reference
+    // Generate payment reference
     const paymentRef = `BOOK-${booking.id}`;
 
-    // Then create the payment record
+    // Create payment record
     const payment = await prisma.payment.create({
       data: {
         userId,
@@ -128,6 +130,7 @@ export const createBooking = async (req, res) => {
         amount: totalPrice,
         reference: paymentRef,
         status: 'PENDING',
+        provider: 'FLUTTERWAVE',
         metadata: {
           type: 'booking',
           basePrice,
@@ -136,11 +139,14 @@ export const createBooking = async (req, res) => {
       }
     });
 
-    // Initialize Paystack transaction
-    const paystackResponse = await paystackService.initializeTransaction({
+    // Initialize Flutterwave transaction
+    const flutterwaveResponse = await flutterwaveService.initializeTransaction({
+      amount: Number(booking.totalPrice),
       email: booking.user.email,
-      amount: Number(booking.totalPrice) * 100,
+      firstName: booking.user.firstName,
+      lastName: booking.user.lastName,
       reference: paymentRef,
+      redirect_url: `${process.env.FRONTEND_URL}/payment/callback`,
       metadata: {
         bookingId: booking.id,
         type: 'booking',
@@ -164,7 +170,7 @@ export const createBooking = async (req, res) => {
         }
       },
       payment: {
-        authorizationUrl: paystackResponse.data.authorization_url,
+        authorizationUrl: flutterwaveResponse.data.link,
         reference: paymentRef
       }
     });
@@ -239,7 +245,9 @@ export const verifyPayment = async (req, res) => {
       include: {
         user: {
           select: {
-            email: true
+            email: true,
+            firstName: true,
+            lastName: true
           }
         },
         payments: {
@@ -263,7 +271,7 @@ export const verifyPayment = async (req, res) => {
 
     // If reference is provided, verify the payment status
     if (reference) {
-      const isPaymentSuccessful = await paystackService.verifyPaymentStatus(reference);
+      const isPaymentSuccessful = await flutterwaveService.verifyPaymentStatus(reference);
       
       if (isPaymentSuccessful) {
         await prisma.$transaction(async (prisma) => {
@@ -318,10 +326,13 @@ export const verifyPayment = async (req, res) => {
 
     // Create new payment only if no recent pending payment exists
     const paymentRef = `BOOK-${booking.id}-${Date.now()}`;
-    const paystackResponse = await paystackService.initializeTransaction({
+    const flutterwaveResponse = await flutterwaveService.initializeTransaction({
+      amount: Number(booking.totalPrice),
       email: booking.user.email,
-      amount: Number(booking.totalPrice) * 100,
+      firstName: booking.user.firstName,
+      lastName: booking.user.lastName,
       reference: paymentRef,
+      redirect_url: `${process.env.FRONTEND_URL}/payment/callback`,
       metadata: {
         bookingId: booking.id,
         type: 'booking',
@@ -336,11 +347,12 @@ export const verifyPayment = async (req, res) => {
         amount: booking.totalPrice,
         reference: paymentRef,
         status: 'PENDING',
+        provider: 'FLUTTERWAVE',
         metadata: {
           type: 'booking',
           basePrice: booking.basePrice,
           serviceFee: booking.serviceFee,
-          authorizationUrl: paystackResponse.data.authorization_url
+          authorizationUrl: flutterwaveResponse.data.link
         }
       }
     });
@@ -349,7 +361,7 @@ export const verifyPayment = async (req, res) => {
       status: 'success',
       booking,
       payment: {
-        authorizationUrl: paystackResponse.data.authorization_url,
+        authorizationUrl: flutterwaveResponse.data.link,
         reference: paymentRef
       }
     });

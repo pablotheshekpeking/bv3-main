@@ -1,13 +1,13 @@
 import { PrismaClient } from '@prisma/client';
-import { PaystackService } from '../services/paystackService.js';
+import { FlutterwaveService } from '../services/flutterwaveService.js';
 
 const prisma = new PrismaClient();
-const paystackService = new PaystackService();
+const flutterwaveService = new FlutterwaveService();
 
-export const handlePaystackWebhook = async (req, res) => {
+export const handleFlutterwaveWebhook = async (req, res) => {
   try {
-    const signature = req.headers['x-paystack-signature'];
-    if (!paystackService.verifyWebhookSignature(signature, req.body)) {
+    const signature = req.headers['verif-hash'];
+    if (!flutterwaveService.verifyWebhookSignature(signature, req.body)) {
       console.error('Invalid webhook signature');
       return res.status(400).send('Invalid signature');
     }
@@ -16,7 +16,7 @@ export const handlePaystackWebhook = async (req, res) => {
     console.log('Webhook Event:', event);
     console.log('Payment Data:', data);
 
-    if (event === 'charge.success') {
+    if (event === 'charge.completed' && data.status === 'successful') {
       await handleSuccessfulPayment(data);
     }
 
@@ -28,29 +28,32 @@ export const handlePaystackWebhook = async (req, res) => {
 };
 
 async function handleSuccessfulPayment(data) {
-  const { reference, metadata } = data;
+  const { tx_ref, metadata } = data;
   
   await prisma.$transaction(async (prisma) => {
     const payment = await prisma.payment.findFirst({
       where: { 
-        reference,
+        reference: tx_ref,
         status: 'PENDING'
       }
     });
 
     if (!payment) {
-      console.error('Payment not found or already processed:', reference);
+      console.error('Payment not found or already processed:', tx_ref);
       return;
     }
 
     // Update payment status
     await prisma.payment.update({
       where: { id: payment.id },
-      data: { status: 'CONFIRMED' }
+      data: { 
+        status: 'CONFIRMED',
+        provider: 'FLUTTERWAVE'
+      }
     });
 
-    // Update booking status
-    if (metadata.type === 'booking') {
+    // Update booking status if it's a booking payment
+    if (metadata?.type === 'booking') {
       const booking = await prisma.booking.findFirst({
         where: { 
           id: metadata.bookingId,
@@ -63,7 +66,7 @@ async function handleSuccessfulPayment(data) {
           where: { id: booking.id },
           data: {
             status: 'CONFIRMED',
-            paymentRef: reference
+            paymentRef: tx_ref
           }
         });
 
@@ -79,14 +82,6 @@ async function handleSuccessfulPayment(data) {
           }
         });
       }
-    } else if (metadata.type === 'points') {
-      const pointsToAdd = Math.floor(data.amount / 100);
-      await prisma.user.update({
-        where: { id: metadata.userId },
-        data: {
-          points: { increment: pointsToAdd }
-        }
-      });
     }
   });
 } 
