@@ -7,17 +7,38 @@ const flutterwaveService = new FlutterwaveService();
 export const handleFlutterwaveWebhook = async (req, res) => {
   try {
     const signature = req.headers['verif-hash'];
+    
+    // Add logging for debugging
+    console.log('Received webhook with signature:', signature);
+    console.log('Webhook body:', JSON.stringify(req.body, null, 2));
+
+    if (!signature) {
+      console.error('No signature found in webhook request');
+      return res.status(401).send('No signature found');
+    }
+
     if (!flutterwaveService.verifyWebhookSignature(signature, req.body)) {
       console.error('Invalid webhook signature');
-      return res.status(400).send('Invalid signature');
+      return res.status(401).send('Invalid signature');
     }
 
     const { event, data } = req.body;
-    console.log('Webhook Event:', event);
-    console.log('Payment Data:', data);
+    console.log('Processing webhook event:', event);
+    console.log('Payment data:', JSON.stringify(data, null, 2));
 
-    if (event === 'charge.completed' && data.status === 'successful') {
-      await handleSuccessfulPayment(data);
+    switch (event) {
+      case 'charge.completed':
+        if (data.status === 'successful') {
+          await handleSuccessfulPayment(data);
+        } else {
+          await handleFailedPayment(data);
+        }
+        break;
+      case 'charge.failed':
+        await handleFailedPayment(data);
+        break;
+      default:
+        console.log('Unhandled event type:', event);
     }
 
     res.sendStatus(200);
@@ -28,7 +49,7 @@ export const handleFlutterwaveWebhook = async (req, res) => {
 };
 
 async function handleSuccessfulPayment(data) {
-  const { tx_ref, metadata } = data;
+  const { tx_ref, metadata, transaction_id } = data;
   
   await prisma.$transaction(async (prisma) => {
     const payment = await prisma.payment.findFirst({
@@ -43,12 +64,20 @@ async function handleSuccessfulPayment(data) {
       return;
     }
 
-    // Update payment status
+    // Update payment status with more details
     await prisma.payment.update({
       where: { id: payment.id },
       data: { 
         status: 'CONFIRMED',
-        provider: 'FLUTTERWAVE'
+        provider: 'FLUTTERWAVE',
+        metadata: {
+          ...payment.metadata,
+          flutterwave: {
+            transactionId: transaction_id,
+            status: data.status,
+            verifiedAt: new Date()
+          }
+        }
       }
     });
 
@@ -66,7 +95,15 @@ async function handleSuccessfulPayment(data) {
           where: { id: booking.id },
           data: {
             status: 'CONFIRMED',
-            paymentRef: tx_ref
+            paymentRef: tx_ref,
+            metadata: {
+              ...booking.metadata,
+              flutterwave: {
+                transactionId: transaction_id,
+                status: data.status,
+                verifiedAt: new Date()
+              }
+            }
           }
         });
 
@@ -82,6 +119,52 @@ async function handleSuccessfulPayment(data) {
           }
         });
       }
+    }
+  });
+}
+
+async function handleFailedPayment(data) {
+  const { tx_ref, metadata } = data;
+  
+  await prisma.$transaction(async (prisma) => {
+    const payment = await prisma.payment.findFirst({
+      where: { 
+        reference: tx_ref,
+        status: 'PENDING'
+      }
+    });
+
+    if (!payment) {
+      console.error('Payment not found or already processed:', tx_ref);
+      return;
+    }
+
+    // Update payment status to failed
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { 
+        status: 'FAILED',
+        metadata: {
+          ...payment.metadata,
+          flutterwave: {
+            status: data.status,
+            failedAt: new Date()
+          }
+        }
+      }
+    });
+
+    // If it's a booking payment, update the booking status
+    if (metadata?.type === 'booking') {
+      await prisma.booking.update({
+        where: { 
+          id: metadata.bookingId,
+          status: 'PENDING'
+        },
+        data: {
+          status: 'CANCELLED'
+        }
+      });
     }
   });
 } 

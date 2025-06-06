@@ -154,9 +154,52 @@ export const createBooking = async (req, res) => {
       }
     });
 
+    // Log the complete Flutterwave response
+    console.log('Flutterwave Transaction Details:', {
+      transactionId: flutterwaveResponse.data.id,
+      flwRef: flutterwaveResponse.data.flw_ref,
+      status: flutterwaveResponse.data.status,
+      paymentType: flutterwaveResponse.data.payment_type,
+      amount: flutterwaveResponse.data.amount,
+      currency: flutterwaveResponse.data.currency,
+      customer: flutterwaveResponse.data.customer,
+      card: flutterwaveResponse.data.card,
+      createdAt: flutterwaveResponse.data.created_at
+    });
+
+    // Update the payment record with Flutterwave details
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        metadata: {
+          ...payment.metadata,
+          flutterwave: {
+            transactionId: flutterwaveResponse.data.id,
+            flwRef: flutterwaveResponse.data.flw_ref,
+            status: flutterwaveResponse.data.status,
+            paymentType: flutterwaveResponse.data.payment_type,
+            amount: flutterwaveResponse.data.amount,
+            currency: flutterwaveResponse.data.currency,
+            customer: flutterwaveResponse.data.customer,
+            card: flutterwaveResponse.data.card,
+            createdAt: flutterwaveResponse.data.created_at
+          }
+        }
+      }
+    });
+
+    // Update the booking with the Flutterwave reference
     await prisma.booking.update({
       where: { id: booking.id },
-      data: { paymentRef }
+      data: { 
+        paymentRef: paymentRef,
+        metadata: {
+          flutterwave: {
+            transactionId: flutterwaveResponse.data.id,
+            flwRef: flutterwaveResponse.data.flw_ref
+          }
+        }
+      }
     });
 
     res.status(201).json({

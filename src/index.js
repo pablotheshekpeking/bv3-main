@@ -8,6 +8,7 @@ import { dirname } from 'path';
 import { adminJs, adminRouter } from './admin/index.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { handleFlutterwaveWebhook } from './controllers/webhookController.js';
+import webhookRoutes from './routes/webhookRoutes.js';
 
 // Import routes
 import authRoutes from './routes/authRoutes.js';
@@ -51,6 +52,9 @@ app.use(adminJs.options.rootPath, adminRouter);
 // Body parser middleware - after AdminJS
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Add this before your other routes
+app.use('/api/webhooks', webhookRoutes);
 
 // API Routes
 app.use('/api/auth', authRoutes);

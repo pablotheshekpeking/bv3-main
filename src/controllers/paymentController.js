@@ -13,7 +13,7 @@ export const initializeFlutterwavePayment = async (req, res) => {
       lastName,
       reference,
       metadata,
-      redirect_url: 'https://your-domain.com/payment/callback' // Your callback URL
+      redirect_url: 'https://bv3-main.onrender.com/payment/callback' // Your callback URL
     });
 
     res.json(result);

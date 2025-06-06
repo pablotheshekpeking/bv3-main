@@ -5,6 +5,7 @@ export class FlutterwaveService {
   constructor() {
     this.secretKey = process.env.FLW_SECRET_KEY;
     this.publicKey = process.env.FLW_PUBLIC_KEY;
+    this.webhookSecret = process.env.FLW_WEBHOOK_SECRET;
     this.baseURL = 'https://api.flutterwave.com/v3';
   }
 
@@ -21,7 +22,7 @@ export class FlutterwaveService {
         redirect_url: data.redirect_url,
         customer: {
           email: data.email,
-          name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+          name: `${data.firstName || ''} ${data.lastName || ''}`.trim(),
         },
         meta: {
           ...data.metadata,
@@ -40,7 +41,9 @@ export class FlutterwaveService {
         }
       );
 
-      console.log('Flutterwave Init Response:', response.data);
+      // Log the complete Flutterwave response
+      console.log('Flutterwave Init Response:', JSON.stringify(response.data, null, 2));
+
       return response.data;
     } catch (error) {
       console.error('Flutterwave Error:', error.response?.data || error.message);
@@ -59,17 +62,19 @@ export class FlutterwaveService {
         }
       );
       
-      console.log('Flutterwave Verify Response:', response.data);
-      return response.data.status === 'success';
+      // Log the complete verification response
+      console.log('Flutterwave Verify Response:', JSON.stringify(response.data, null, 2));
+      
+      return response.data;
     } catch (error) {
       console.error('Payment verification error:', error.response?.data || error.message);
-      return false;
+      return null;
     }
   }
 
   verifyWebhookSignature(signature, requestBody) {
     const hash = crypto
-      .createHmac('sha256', this.secretKey)
+      .createHmac('sha256', 'flutterhash')
       .update(JSON.stringify(requestBody))
       .digest('hex');
     return hash === signature;
