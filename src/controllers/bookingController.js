@@ -192,13 +192,7 @@ export const createBooking = async (req, res) => {
     await prisma.booking.update({
       where: { id: booking.id },
       data: { 
-        paymentRef: paymentRef,
-        metadata: {
-          flutterwave: {
-            transactionId: flutterwaveResponse.data.id,
-            flwRef: flutterwaveResponse.data.flw_ref
-          }
-        }
+        paymentRef: paymentRef
       }
     });
 
