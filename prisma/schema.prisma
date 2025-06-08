@@ -82,6 +82,7 @@ model User {
   bookings            Booking[]
   payments            Payment[]
   receivedReviews     Review[]       @relation("ReceivedReviews")
+  holds               ApartmentHold[]
 }
 
 model Verification {
@@ -122,6 +123,7 @@ model Listing {
   bookings       Booking[]
   metadata       Json?
   deletedAt      DateTime?
+  holds          ApartmentHold[]
 }
 
 model Image {
@@ -224,6 +226,20 @@ model ApartmentAvailability {
   listing       Listing  @relation(fields: [listingId], references: [id])
 }
 
+model ApartmentHold {
+  id         String   @id @default(uuid())
+  listingId  String
+  userId     String
+  startDate  DateTime
+  endDate    DateTime
+  expiryTime DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  listing    Listing  @relation(fields: [listingId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+  bookings   Booking[]
+}
+
 model Booking {
   id         String        @id @default(uuid())
   listingId  String
@@ -241,6 +257,8 @@ model Booking {
   user       User          @relation(fields: [userId], references: [id])
   payments   Payment[]
   deletedAt  DateTime?
+  holdId     String?
+  hold       ApartmentHold? @relation(fields: [holdId], references: [id])
 }
 
 enum BookingStatus {

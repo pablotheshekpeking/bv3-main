@@ -68,18 +68,64 @@ export const createBooking = async (req, res) => {
       throw new APIError('Invalid date range', 400);
     }
 
-    // Check availability
-    const availability = await prisma.apartmentAvailability.findFirst({
+    // Check for existing holds or confirmed bookings
+    const existingHold = await prisma.apartmentHold.findFirst({
+      where: {
+        listingId,
+        expiryTime: { gt: new Date() },
+        OR: [
+          {
+            AND: [
+              { startDate: { lte: checkInDate } },
+              { endDate: { gte: checkInDate } }
+            ]
+          },
+          {
+            AND: [
+              { startDate: { lte: checkOutDate } },
+              { endDate: { gte: checkOutDate } }
+            ]
+          }
+        ]
+      }
+    });
+
+    const existingAvailability = await prisma.apartmentAvailability.findFirst({
       where: {
         listingId,
         startDate: { lte: checkInDate },
         endDate: { gte: checkOutDate },
-        isBlocked: false
+        isBlocked: true
+      }
+    });
+
+    if (existingHold || existingAvailability) {
+      throw new APIError('These dates are currently being held by another user. Please try again in a few minutes.', 400);
+    }
+
+    // Create a temporary hold
+    const holdExpiryTime = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
+    const hold = await prisma.apartmentHold.create({
+      data: {
+        listingId,
+        startDate: checkInDate,
+        endDate: checkOutDate,
+        userId,
+        expiryTime: holdExpiryTime
+      }
+    });
+
+    // Fetch the availability for the listing
+    const availability = await prisma.apartmentAvailability.findFirst({
+      where: {
+        listingId,
+        startDate: { lte: checkInDate },
+        endDate: { gte: checkOutDate }
       }
     });
 
     if (!availability) {
-      throw new APIError('Dates not available', 400);
+      throw new APIError('No availability found for the selected dates', 400);
     }
 
     // Calculate total price including service fee
@@ -87,7 +133,7 @@ export const createBooking = async (req, res) => {
     const basePrice = availability.pricePerNight * nights;
     const totalPrice = basePrice + Number(serviceFee);
 
-    // Create booking
+    // Create booking with hold reference
     const booking = await prisma.booking.create({
       data: {
         userId,
@@ -97,7 +143,8 @@ export const createBooking = async (req, res) => {
         basePrice,
         serviceFee,
         totalPrice,
-        status: 'PENDING'
+        status: 'PENDING',
+        holdId: hold.id
       },
       include: {
         listing: {
@@ -118,6 +165,47 @@ export const createBooking = async (req, res) => {
         }
       }
     });
+
+    // Store the booking ID for the cleanup job
+    const bookingId = booking.id;
+
+    // Set up a cleanup job for the hold and booking
+    setTimeout(async () => {
+      const currentBooking = await prisma.booking.findUnique({
+        where: { id: bookingId },
+        select: { status: true }
+      });
+
+      if (currentBooking?.status === 'PENDING') {
+        await prisma.$transaction(async (prisma) => {
+          // Delete the hold
+          await prisma.apartmentHold.delete({
+            where: { id: hold.id }
+          });
+
+          // Cancel the booking
+          await prisma.booking.update({
+            where: { id: bookingId },
+            data: { 
+              status: 'CANCELLED',
+              deletedAt: new Date()
+            }
+          });
+
+          // Release the availability
+          await prisma.apartmentAvailability.updateMany({
+            where: {
+              listingId,
+              startDate: { lte: checkInDate },
+              endDate: { gte: checkOutDate }
+            },
+            data: {
+              isBlocked: false
+            }
+          });
+        });
+      }
+    }, 15 * 60 * 1000); // 15 minutes
 
     // Generate payment reference
     const paymentRef = `BOOK-${booking.id}`;
