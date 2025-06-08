@@ -7,7 +7,7 @@ const flutterwaveService = new FlutterwaveService();
 export const handleFlutterwaveWebhook = async (req, res) => {
   try {
     const signature = req.headers['verif-hash'];
-    
+
     // Add logging for debugging
     console.log('Received webhook with signature:', signature);
     console.log('Webhook body:', JSON.stringify(req.body, null, 2));
@@ -50,10 +50,10 @@ export const handleFlutterwaveWebhook = async (req, res) => {
 
 async function handleSuccessfulPayment(data) {
   const { tx_ref, metadata, transaction_id } = data;
-  
+
   await prisma.$transaction(async (prisma) => {
     const payment = await prisma.payment.findFirst({
-      where: { 
+      where: {
         reference: tx_ref,
         status: 'PENDING'
       }
@@ -67,11 +67,10 @@ async function handleSuccessfulPayment(data) {
     // Update payment status with more details
     await prisma.payment.update({
       where: { id: payment.id },
-      data: { 
+      data: {
         status: 'CONFIRMED',
         provider: 'FLUTTERWAVE',
         metadata: {
-          ...payment.metadata,
           flutterwave: {
             transactionId: transaction_id,
             status: data.status,
@@ -84,7 +83,7 @@ async function handleSuccessfulPayment(data) {
     // Update booking status if it's a booking payment
     if (metadata?.type === 'booking') {
       const booking = await prisma.booking.findFirst({
-        where: { 
+        where: {
           id: metadata.bookingId,
           status: 'PENDING'
         }
@@ -95,15 +94,7 @@ async function handleSuccessfulPayment(data) {
           where: { id: booking.id },
           data: {
             status: 'CONFIRMED',
-            paymentRef: tx_ref,
-            metadata: {
-              ...booking.metadata,
-              flutterwave: {
-                transactionId: transaction_id,
-                status: data.status,
-                verifiedAt: new Date()
-              }
-            }
+            paymentRef: tx_ref
           }
         });
 
@@ -125,10 +116,10 @@ async function handleSuccessfulPayment(data) {
 
 async function handleFailedPayment(data) {
   const { tx_ref, metadata } = data;
-  
+
   await prisma.$transaction(async (prisma) => {
     const payment = await prisma.payment.findFirst({
-      where: { 
+      where: {
         reference: tx_ref,
         status: 'PENDING'
       }
@@ -142,7 +133,7 @@ async function handleFailedPayment(data) {
     // Update payment status to failed
     await prisma.payment.update({
       where: { id: payment.id },
-      data: { 
+      data: {
         status: 'FAILED',
         metadata: {
           ...payment.metadata,
@@ -157,7 +148,7 @@ async function handleFailedPayment(data) {
     // If it's a booking payment, update the booking status
     if (metadata?.type === 'booking') {
       await prisma.booking.update({
-        where: { 
+        where: {
           id: metadata.bookingId,
           status: 'PENDING'
         },
