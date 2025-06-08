@@ -50,10 +50,12 @@ export const handleFlutterwaveWebhook = async (req, res) => {
     const { event, data } = req.body;
     console.log('Processing webhook event:', event);
 
+    let updatedBooking = null;
+
     switch (event) {
       case 'charge.completed':
         if (data.status === 'successful') {
-          await handleSuccessfulPayment(data);
+          updatedBooking = await handleSuccessfulPayment(data);
         } else {
           await handleFailedPayment(data);
         }
@@ -66,7 +68,11 @@ export const handleFlutterwaveWebhook = async (req, res) => {
         return res.status(400).json({ message: 'Unhandled event type' });
     }
 
-    res.json({ message: 'Webhook processed successfully' });
+    // Return the updated booking data if available
+    res.json({ 
+      message: 'Webhook processed successfully',
+      booking: updatedBooking
+    });
   } catch (error) {
     console.error('Webhook error:', error);
     res.status(500).json({ 
@@ -78,6 +84,7 @@ export const handleFlutterwaveWebhook = async (req, res) => {
 
 async function handleSuccessfulPayment(data) {
   const { tx_ref, metadata, transaction_id } = data;
+  let updatedBooking = null;
 
   await prisma.$transaction(async (prisma) => {
     const payment = await prisma.payment.findFirst({
@@ -118,7 +125,7 @@ async function handleSuccessfulPayment(data) {
       });
 
       if (booking) {
-        await prisma.booking.update({
+        updatedBooking = await prisma.booking.update({
           where: { id: booking.id },
           data: {
             status: 'CONFIRMED',
@@ -140,6 +147,8 @@ async function handleSuccessfulPayment(data) {
       }
     }
   });
+
+  return updatedBooking;
 }
 
 async function handleFailedPayment(data) {
