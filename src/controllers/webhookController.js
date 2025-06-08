@@ -7,7 +7,7 @@ const flutterwaveService = new FlutterwaveService();
 export const handleFlutterwaveWebhook = async (req, res) => {
   try {
     const signature = req.headers['verif-hash'];
-
+    
     // Add logging for debugging
     console.log('Received webhook with signature:', signature);
     console.log('Webhook body:', JSON.stringify(req.body, null, 2));
@@ -15,6 +15,24 @@ export const handleFlutterwaveWebhook = async (req, res) => {
     if (!signature) {
       console.error('No signature found in webhook request');
       return res.status(401).send('No signature found');
+    }
+
+    // Check if this webhook has been processed before
+    const webhookId = req.body.data?.id;
+    if (webhookId) {
+      const existingWebhook = await prisma.payment.findFirst({
+        where: {
+          metadata: {
+            path: ['flutterwave', 'webhookId'],
+            equals: webhookId
+          }
+        }
+      });
+
+      if (existingWebhook) {
+        console.log('Webhook already processed:', webhookId);
+        return res.sendStatus(200);
+      }
     }
 
     if (!flutterwaveService.verifyWebhookSignature(signature, req.body)) {

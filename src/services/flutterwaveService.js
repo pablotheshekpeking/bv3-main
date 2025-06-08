@@ -73,10 +73,24 @@ export class FlutterwaveService {
   }
 
   verifyWebhookSignature(signature, requestBody) {
-    const hash = crypto
-      .createHmac('sha256', 'flutterhash')
-      .update(JSON.stringify(requestBody))
-      .digest('hex');
-    return hash === signature;
+    try {
+      // Use the webhook secret from environment variables
+      const secret = this.webhookSecret || 'flutterhash';
+      
+      // Create HMAC hash
+      const hash = crypto
+        .createHmac('sha256', secret)
+        .update(JSON.stringify(requestBody))
+        .digest('hex');
+      
+      // Log for debugging
+      console.log('Generated hash:', hash);
+      console.log('Received signature:', signature);
+      
+      return hash === signature;
+    } catch (error) {
+      console.error('Error verifying webhook signature:', error);
+      return false;
+    }
   }
 }
