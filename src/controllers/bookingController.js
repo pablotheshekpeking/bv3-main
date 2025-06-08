@@ -87,6 +87,14 @@ export const createBooking = async (req, res) => {
             ]
           }
         ]
+      },
+      include: {
+        user: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
+        }
       }
     });
 
@@ -100,7 +108,36 @@ export const createBooking = async (req, res) => {
     });
 
     if (existingHold || existingAvailability) {
-      throw new APIError('These dates are currently being held by another user. Please try again in a few minutes.', 400);
+      // Log detailed information about the hold
+      console.log('Booking hold detected:', {
+        listingId,
+        checkInDate,
+        checkOutDate,
+        holdDetails: existingHold ? {
+          holdId: existingHold.id,
+          holdExpiryTime: existingHold.expiryTime,
+          heldBy: existingHold.user ? `${existingHold.user.firstName} ${existingHold.user.lastName}` : 'Unknown user',
+          holdStartDate: existingHold.startDate,
+          holdEndDate: existingHold.endDate
+        } : null,
+        availabilityBlocked: existingAvailability ? {
+          availabilityId: existingAvailability.id,
+          blockedStartDate: existingAvailability.startDate,
+          blockedEndDate: existingAvailability.endDate
+        } : null,
+        timestamp: new Date().toISOString()
+      });
+
+      // Calculate time remaining on hold
+      const timeRemaining = existingHold ? 
+        Math.ceil((new Date(existingHold.expiryTime) - new Date()) / (1000 * 60)) : 0;
+
+      throw new APIError(
+        `These dates are currently being held by another user. ${timeRemaining > 0 ? 
+          `Please try again in ${timeRemaining} minutes.` : 
+          'Please try again in a few minutes.'}`,
+        400
+      );
     }
 
     // Create a temporary hold
@@ -270,7 +307,8 @@ export const createBooking = async (req, res) => {
             currency: flutterwaveResponse.data.currency,
             customer: flutterwaveResponse.data.customer,
             card: flutterwaveResponse.data.card,
-            createdAt: flutterwaveResponse.data.created_at
+            createdAt: flutterwaveResponse.data.created_at,
+            link: flutterwaveResponse.data.link
           }
         }
       }
@@ -330,6 +368,15 @@ export const getUserBookings = async (req, res) => {
               select: { url: true }
             }
           }
+        },
+        payments: {
+          where: {
+            status: 'PENDING'
+          },
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1
         }
       },
       orderBy: {
@@ -344,7 +391,11 @@ export const getUserBookings = async (req, res) => {
         listing: {
           ...booking.listing,
           primaryImage: booking.listing.images[0]?.url
-        }
+        },
+        payment: booking.payments[0] ? {
+          authorizationUrl: booking.payments[0].metadata?.flutterwave?.link,
+          reference: booking.payments[0].reference
+        } : null
       }))
     });
   } catch (error) {
