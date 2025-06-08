@@ -1,23 +1,27 @@
 import { PrismaClient } from '@prisma/client';
 import { FlutterwaveService } from '../services/flutterwaveService.js';
+import { createHmac } from 'node:crypto';
 
 const prisma = new PrismaClient();
 const flutterwaveService = new FlutterwaveService();
 
 export const handleFlutterwaveWebhook = async (req, res) => {
   try {
+    // Add logging for debugging
+    console.log('Received webhook request:', {
+      body: req.body,
+      headers: req.headers
+    });
+
     // Generate the hash first
-    const hash = crypto
-      .createHmac('sha256', 'flutterhash')
+    const hash = createHmac('sha256', 'flutterhash')
       .update(JSON.stringify(req.body))
       .digest('hex');
     
     // Use the generated hash as the signature
     const signature = hash;
     
-    // Add logging for debugging
     console.log('Generated hash:', hash);
-    console.log('Webhook body:', JSON.stringify(req.body, null, 2));
 
     // Check if this webhook has been processed before
     const webhookId = req.body.data?.id;
@@ -37,15 +41,14 @@ export const handleFlutterwaveWebhook = async (req, res) => {
       }
     }
 
-    // Always return true for signature verification since we're using the generated hash
+    // Verify signature
     if (!flutterwaveService.verifyWebhookSignature(signature, req.body)) {
       console.error('Invalid webhook signature');
-      return res.status(401).send('Invalid signature');
+      return res.status(401).json({ message: 'Invalid signature' });
     }
 
     const { event, data } = req.body;
     console.log('Processing webhook event:', event);
-    console.log('Payment data:', JSON.stringify(data, null, 2));
 
     switch (event) {
       case 'charge.completed':
@@ -60,12 +63,16 @@ export const handleFlutterwaveWebhook = async (req, res) => {
         break;
       default:
         console.log('Unhandled event type:', event);
+        return res.status(400).json({ message: 'Unhandled event type' });
     }
 
-    res.sendStatus(200);
+    res.json({ message: 'Webhook processed successfully' });
   } catch (error) {
     console.error('Webhook error:', error);
-    res.sendStatus(500);
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 

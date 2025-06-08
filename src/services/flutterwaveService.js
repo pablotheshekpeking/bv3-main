@@ -1,5 +1,5 @@
 import axios from 'axios';
-import crypto from 'crypto';
+import { createHmac } from 'node:crypto';
 
 export class FlutterwaveService {
   constructor() {
@@ -78,8 +78,7 @@ export class FlutterwaveService {
       const secret = this.webhookSecret || 'flutterhash';
       
       // Create HMAC hash
-      const hash = crypto
-        .createHmac('sha256', secret)
+      const hash = createHmac('sha256', secret)
         .update(JSON.stringify(requestBody))
         .digest('hex');
       
@@ -87,7 +86,8 @@ export class FlutterwaveService {
       console.log('Generated hash:', hash);
       console.log('Received signature:', signature);
       
-      return hash === hash;
+      // Compare the generated hash with the received signature
+      return hash === signature;
     } catch (error) {
       console.error('Error verifying webhook signature:', error);
       return false;
