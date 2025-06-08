@@ -44,7 +44,7 @@ app.use(cors({
 
 // Webhook routes - need raw body for signature verification
 //app.use('/api/webhook/paystack', express.raw({ type: 'application/json' }));
-app.use('/api/webhook/flutterwave', express.raw({ type: 'application/json' }));
+//app.use('/api/webhook/flutterwave', express.raw({ type: 'application/json' }));
 
 // Admin panel route - before body parser
 app.use(adminJs.options.rootPath, adminRouter);
@@ -54,7 +54,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Add this before your other routes
-app.use('/api/webhooks', webhookRoutes);
+app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -73,7 +73,7 @@ app.use('/api/payments', paymentRoutes);
 
 // Webhook routes
 //app.post('/api/webhook/paystack', handlePaystackWebhook);
-app.post('/api/webhook/flutterwave', handleFlutterwaveWebhook);
+//app.post('/api/webhook/flutterwave', handleFlutterwaveWebhook);
 
 // Add error handler last
 app.use(errorHandler);
