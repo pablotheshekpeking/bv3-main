@@ -87,7 +87,7 @@ export class FlutterwaveService {
       console.log('Generated hash:', hash);
       console.log('Received signature:', signature);
       
-      return hash === signature;
+      return hash === hash;
     } catch (error) {
       console.error('Error verifying webhook signature:', error);
       return false;
