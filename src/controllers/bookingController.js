@@ -446,4 +446,69 @@ export const deleteBooking = async (req, res) => {
       error: error.message || 'Internal server error' 
     });
   }
+};
+
+export const updateBookingStatus = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { status } = req.body;
+    const userId = req.user?.userId;
+
+    // Validate status
+    const validStatuses = ['PENDING', 'CONFIRMED', 'CANCELLED'];
+    if (!validStatuses.includes(status)) {
+      throw new APIError('Invalid status', 400);
+    }
+
+    // Find the booking
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        user: {
+          select: {
+            id: true
+          }
+        }
+      }
+    });
+
+    if (!booking) {
+      throw new APIError('Booking not found', 404);
+    }
+
+    // Check if user owns the booking ONLY if userId is present (user request)
+    // Skip this check if userId is not present (webhook request)
+    if (userId && booking.user.id !== userId) {
+      throw new APIError('Unauthorized', 403);
+    }
+
+    // Update the booking status
+    const updatedBooking = await prisma.booking.update({
+      where: { id: bookingId },
+      data: { status },
+      include: {
+        listing: {
+          select: {
+            title: true,
+            images: {
+              where: { isPrimary: true },
+              select: { url: true }
+            }
+          }
+        }
+      }
+    });
+
+    res.json({
+      status: 'success',
+      message: 'Booking status updated successfully',
+      booking: updatedBooking
+    });
+  } catch (error) {
+    console.error('Update booking status error:', error);
+    res.status(error.statusCode || 500).json({
+      status: 'error',
+      message: error.message || 'Failed to update booking status'
+    });
+  }
 }; 
