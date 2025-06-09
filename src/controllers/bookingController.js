@@ -351,8 +351,20 @@ export const getUserBookings = async (req, res) => {
 
     const bookings = await prisma.booking.findMany({
       where: {
-        userId: userId,
-        deletedAt: null
+        OR: [
+          // Bookings where user is the guest
+          {
+            userId: userId,
+            deletedAt: null
+          },
+          // Bookings where user is the owner of the listing
+          {
+            listing: {
+              userId: userId
+            },
+            deletedAt: null
+          }
+        ]
       },
       include: {
         listing: {
@@ -363,10 +375,20 @@ export const getUserBookings = async (req, res) => {
             currency: true,
             location: true,
             metadata: true,
+            userId: true, // Include userId to identify if user is owner
             images: {
               where: { isPrimary: true },
               select: { url: true }
             }
+          }
+        },
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            profileImage: true
           }
         },
         payments: {
@@ -395,7 +417,9 @@ export const getUserBookings = async (req, res) => {
         payment: booking.payments[0] ? {
           authorizationUrl: booking.payments[0].metadata?.flutterwave?.link,
           reference: booking.payments[0].reference
-        } : null
+        } : null,
+        // Add a flag to indicate if the current user is the owner
+        isOwner: booking.listing.userId === userId
       }))
     });
   } catch (error) {
