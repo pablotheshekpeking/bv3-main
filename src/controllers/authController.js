@@ -134,7 +134,11 @@ exports.login = async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        status: user.status,
+        isVendor: user.isVendor
       },
     });
   } catch (error) {
@@ -155,7 +159,8 @@ exports.validateSession = async (req, res) => {
         firstName: true,
         lastName: true,
         role: true,
-        status: true
+        status: true,
+        isVendor: true
       }
     });
 
