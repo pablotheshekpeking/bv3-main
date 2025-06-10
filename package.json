@@ -25,6 +25,7 @@
     "dotenv": "^16.x.x",
     "express": "^4.x.x",
     "express-formidable": "^1.2.0",
+    "firebase-admin": "^13.4.0",
     "fs": "^0.0.1-security",
     "handlebars": "^4.7.8",
     "jsonwebtoken": "^9.0.2",

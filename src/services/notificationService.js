@@ -1,17 +1,22 @@
 import admin from 'firebase-admin';
 import { PrismaClient } from '@prisma/client';
+import path from 'path';
 
 const prisma = new PrismaClient();
 
-// Initialize Firebase Admin
+// Initialize Firebase Admin using environment variables
 admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
-  projectId: 'voyago-notifications'
+  credential: admin.credential.cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+  }),
+  projectId: process.env.FIREBASE_PROJECT_ID
 });
 
 export const sendNotification = async (userId, title, body, data = {}) => {
   try {
-    // Get user's FCM token from the database
+    // Get user's FCM token
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { fcmToken: true }
@@ -40,7 +45,7 @@ export const sendNotification = async (userId, title, body, data = {}) => {
   }
 };
 
-// Specific notification functions
+// Specific notification functions for your use cases
 export const sendBookingNotification = async (bookingId) => {
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
