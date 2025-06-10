@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { FlutterwaveService } from '../services/flutterwaveService.js';
 import { APIError } from '../utils/errors.js';
+import { sendBookingNotification } from '../services/notificationService.js';
 
 const prisma = new PrismaClient();
 const flutterwaveService = new FlutterwaveService();
@@ -321,6 +322,9 @@ export const createBooking = async (req, res) => {
         paymentRef: paymentRef
       }
     });
+
+    // Send notification after successful booking
+    await sendBookingNotification(booking.id);
 
     res.status(201).json({
       status: 'success',

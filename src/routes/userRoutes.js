@@ -1,0 +1,1 @@
+router.post('/fcm-token', authenticateToken, userController.updateFCMToken); 

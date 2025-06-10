@@ -83,6 +83,7 @@ model User {
   payments            Payment[]
   receivedReviews     Review[]       @relation("ReceivedReviews")
   holds               ApartmentHold[]
+  fcmToken            String?
 }
 
 model Verification {
