@@ -13,4 +13,10 @@ router.post('/', reviewController.createReview);
 // Get reviews for a user
 router.get('/user/:userId', reviewController.getUserReviews);
 
+// Get reviews for a listing
+router.get('/listing/:listingId', reviewController.getListingReviews);
+
+// Get user's average rating
+router.get('/user/:userId/rating', reviewController.getUserRating);
+
 export default router; 
