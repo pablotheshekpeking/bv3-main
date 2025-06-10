@@ -79,11 +79,18 @@ export const getListingReviews = async (req, res) => {
 
     const reviews = await prisma.review.findMany({
       where: { 
-        listingId,
-        deletedAt: null // Only get non-deleted reviews
+        listingId
       },
       include: {
         user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            profileImage: true
+          }
+        },
+        targetUser: {
           select: {
             id: true,
             firstName: true,
@@ -99,16 +106,14 @@ export const getListingReviews = async (req, res) => {
 
     const total = await prisma.review.count({
       where: { 
-        listingId,
-        deletedAt: null
+        listingId
       }
     });
 
     // Calculate average rating for the listing
     const avgRating = await prisma.review.aggregate({
       where: { 
-        listingId,
-        deletedAt: null
+        listingId
       },
       _avg: {
         rating: true
@@ -137,14 +142,32 @@ export const getUserRating = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Get all non-deleted reviews for the user
+    // Get all reviews for the user
     const reviews = await prisma.review.findMany({
       where: { 
-        targetUserId: userId,
-        deletedAt: null
+        targetUserId: userId
       },
       select: {
-        rating: true
+        rating: true,
+        comment: true,
+        createdAt: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            profileImage: true
+          }
+        },
+        listing: {
+          select: {
+            id: true,
+            title: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
     });
 
@@ -168,7 +191,14 @@ export const getUserRating = async (req, res) => {
     res.json({
       averageRating: parseFloat(averageRating.toFixed(1)),
       totalReviews: reviews.length,
-      ratingDistribution
+      ratingDistribution,
+      reviews: reviews.map(review => ({
+        ...review,
+        user: {
+          ...review.user,
+          name: `${review.user.firstName} ${review.user.lastName}`
+        }
+      }))
     });
   } catch (error) {
     console.error('Error calculating user rating:', error);
