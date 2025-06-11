@@ -5,7 +5,8 @@ import {
   getUserBookings,
   verifyPayment,
   deleteBooking,
-  updateBookingStatus
+  updateBookingStatus,
+  confirmCheckIn
 } from '../controllers/bookingController.js';
 
 const router = express.Router();
@@ -15,5 +16,6 @@ router.get('/my-bookings', authenticateToken, getUserBookings);
 router.post('/:bookingId/verify-payment', authenticateToken, verifyPayment);
 router.delete('/:bookingId', authenticateToken, deleteBooking);
 router.patch('/:bookingId/status', authenticateToken, updateBookingStatus);
+router.post('/:bookingId/check-in', authenticateToken, confirmCheckIn);
 
 export default router; 

@@ -251,7 +251,7 @@ model Booking {
   serviceFee Decimal       @default(0)
   totalPrice Decimal       @default(0)
   status     BookingStatus @default(PENDING)
-  paymentRef String? // Paystack payment reference
+  paymentRef String?       // Paystack payment reference
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
   listing    Listing       @relation(fields: [listingId], references: [id])
@@ -260,13 +260,16 @@ model Booking {
   deletedAt  DateTime?
   holdId     String?
   hold       ApartmentHold? @relation(fields: [holdId], references: [id])
+  checkedIn  Boolean       @default(false)
+  checkedInAt DateTime?
 }
 
 enum BookingStatus {
   PENDING
   CONFIRMED
-  CANCELLED
+  CHECKED_IN
   COMPLETED
+  CANCELLED
 }
 
 model Payment {

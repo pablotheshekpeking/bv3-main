@@ -678,4 +678,57 @@ export const updateBookingStatus = async (req, res) => {
       message: error.message || 'Failed to update booking status'
     });
   }
+};
+
+export const confirmCheckIn = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const userId = req.user.userId;
+
+    // Find the booking
+    const booking = await prisma.booking.findFirst({
+      where: { 
+        id: bookingId,
+        userId,
+        status: 'CONFIRMED',
+        checkedIn: false
+      },
+      include: {
+        listing: {
+          select: {
+            userId: true,
+            title: true
+          }
+        }
+      }
+    });
+
+    if (!booking) {
+      throw new APIError('Booking not found or not eligible for check-in', 404);
+    }
+
+    // Update booking with check-in confirmation
+    const updatedBooking = await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        checkedIn: true,
+        checkedInAt: new Date(),
+        status: 'CHECKED_IN'
+      }
+    });
+
+    // Send notification to listing owner
+    await sendBookingNotification(booking.id, 'CHECK_IN_CONFIRMED');
+
+    res.json({
+      status: 'success',
+      message: 'Check-in confirmed successfully',
+      booking: updatedBooking
+    });
+  } catch (error) {
+    console.error('Check-in confirmation error:', error);
+    res.status(error.statusCode || 500).json({
+      error: error.message || 'Internal server error'
+    });
+  }
 }; 
