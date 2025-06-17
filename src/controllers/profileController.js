@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { sendPasswordChangedEmail } from '../services/emailService.js';
 
 const prisma = new PrismaClient();
 
@@ -44,7 +45,14 @@ export const changePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
     const user = await prisma.user.findUnique({
-      where: { id: userId }
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        password: true
+      }
     });
 
     const validPassword = await bcrypt.compare(currentPassword, user.password);
@@ -57,6 +65,9 @@ export const changePassword = async (req, res) => {
       where: { id: userId },
       data: { password: hashedPassword }
     });
+
+    // Send password changed email
+    await sendPasswordChangedEmail(user);
 
     res.json({ message: 'Password updated successfully' });
   } catch (error) {

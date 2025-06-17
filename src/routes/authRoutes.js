@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { authenticateToken } from '../middleware/auth.js';
 import { addToBlacklist } from '../services/tokenService.js';
 import * as tokenValidator from '../middleware/tokenValidator.js';
+import { sendEmail } from '../services/emailService.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -106,6 +107,15 @@ router.post('/register', validateRegistration, async (req, res) => {
       }
     });
 
+    // Send verification code and welcome email
+    const { sendVerificationCode } = await import('../services/verificationService.js');
+    const { sendWelcomeEmail } = await import('../services/emailService.js');
+    const verificationCode = await sendVerificationCode(user.id, 'EMAIL');
+    await sendWelcomeEmail({
+      ...user,
+      verificationCode: verificationCode.code
+    });
+
     // Generate token
     const token = jwt.sign(
       { userId: user.id },
@@ -196,5 +206,30 @@ router.post('/logout', authenticateToken, (req, res) => {
 });
 
 router.get('/validate', tokenValidator.validateSession);
+
+// Test email configuration
+router.post('/test-email', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    await sendEmail({
+      to: email,
+      subject: 'Test Email',
+      html: '<h1>Test Email</h1><p>If you receive this, your email configuration is working!</p>'
+    });
+
+    res.json({ message: 'Test email sent successfully' });
+  } catch (error) {
+    console.error('Test email error:', error);
+    res.status(500).json({ 
+      message: 'Failed to send test email',
+      error: error.message
+    });
+  }
+});
 
 export default router; 

@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { v2 as cloudinary } from 'cloudinary';
 import { Readable } from 'stream';
+import { sendListingCreatedEmail, sendListingUpdatedEmail } from '../services/emailService.js';
 
 const prisma = new PrismaClient();
 
@@ -39,7 +40,12 @@ export const createListing = async (req, res) => {
         // Validate user is vendor
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            select: { isVendor: true }
+            select: { 
+                isVendor: true,
+                email: true,
+                firstName: true,
+                lastName: true
+            }
         });
 
         if (!user?.isVendor) {
@@ -141,6 +147,9 @@ export const createListing = async (req, res) => {
 
             return createdListing;
         });
+
+        // Send listing created email
+        await sendListingCreatedEmail(listing, user);
 
         res.status(201).json({
             status: 'success',
@@ -253,10 +262,20 @@ export const updateListing = async (req, res) => {
     try {
         const { id } = req.params;
         const updates = req.body;
-        const userId = req.user.id;
+        const userId = req.user.userId;
 
         const listing = await prisma.listing.findUnique({
-            where: { id }
+            where: { id },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        email: true,
+                        firstName: true,
+                        lastName: true
+                    }
+                }
+            }
         });
 
         if (!listing) {
@@ -271,6 +290,9 @@ export const updateListing = async (req, res) => {
             where: { id },
             data: updates
         });
+
+        // Send listing updated email
+        await sendListingUpdatedEmail(updatedListing, listing.user);
 
         res.json(updatedListing);
     } catch (error) {

@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { sendTemplatedEmail } from '../utils/emailService.js';
+import { sendWelcomeEmail, sendVerificationEmail } from '../services/emailService.js';
 import { sendVerificationCode } from '../services/verificationService.js';
 
 const prisma = new PrismaClient();
@@ -10,7 +10,7 @@ export const signup = async (req, res) => {
   try {
     const { email, password, firstName, lastName, phone } = req.body;
 
-    // Existing user check (lines 19-34 from original)
+    // Existing user check
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
@@ -28,7 +28,7 @@ export const signup = async (req, res) => {
       });
     }
 
-    // Password validation and hashing (lines 36-45 from original)
+    // Password validation and hashing
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(password)) {
       return res.status(400).json({
@@ -54,14 +54,10 @@ export const signup = async (req, res) => {
     const verificationCode = await sendVerificationCode(user.id, 'EMAIL');
     
     // Send welcome email with verification code
-    await sendTemplatedEmail(
-      user.email,
-      'welcome',
-      {
-        firstName: user.firstName,
-        verificationCode: verificationCode.code
-      }
-    );
+    await sendWelcomeEmail({
+      ...user,
+      verificationCode: verificationCode.code
+    });
 
     // Generate JWT token
     const token = jwt.sign(

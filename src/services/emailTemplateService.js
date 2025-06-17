@@ -46,6 +46,12 @@ const defaultTemplate = `
             border-radius: 5px;
             margin: 10px 0;
         }
+        .details {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
     </style>
 </head>
 <body>
@@ -87,6 +93,138 @@ export const emailTemplates = {
                 <strong>{{verificationCode}}</strong>
             </p>
             <p>This code will expire in 15 minutes.</p>
+            <p>Best regards,<br>The {{appName}} Team</p>
+        `
+    },
+    booking_confirmation: {
+        subject: 'Booking Confirmation - {{listingTitle}}',
+        content: `
+            <p>Hi {{firstName}},</p>
+            <p>Your booking has been confirmed!</p>
+            <div class="details">
+                <p><strong>Booking ID:</strong> {{bookingId}}</p>
+                <p><strong>Check-in:</strong> {{checkIn}}</p>
+                <p><strong>Check-out:</strong> {{checkOut}}</p>
+                <p><strong>Total Amount:</strong> {{totalPrice}}</p>
+            </div>
+            <p>Best regards,<br>The {{appName}} Team</p>
+        `
+    },
+    booking_cancellation: {
+        subject: 'Booking Cancelled - {{listingTitle}}',
+        content: `
+            <p>Hi {{firstName}},</p>
+            <p>Your booking has been cancelled.</p>
+            <div class="details">
+                <p><strong>Booking ID:</strong> {{bookingId}}</p>
+                <p><strong>Listing:</strong> {{listingTitle}}</p>
+            </div>
+            <p>Best regards,<br>The {{appName}} Team</p>
+        `
+    },
+    check_in_reminder: {
+        subject: 'Check-in Reminder - {{listingTitle}}',
+        content: `
+            <p>Hi {{firstName}},</p>
+            <p>This is a reminder about your upcoming check-in.</p>
+            <div class="details">
+                <p><strong>Booking ID:</strong> {{bookingId}}</p>
+                <p><strong>Check-in Date:</strong> {{checkIn}}</p>
+                <p><strong>Listing:</strong> {{listingTitle}}</p>
+            </div>
+            <p>Best regards,<br>The {{appName}} Team</p>
+        `
+    },
+    listing_created: {
+        subject: 'Listing Created Successfully',
+        content: `
+            <p>Hi {{firstName}},</p>
+            <p>Your listing has been created successfully!</p>
+            <div class="details">
+                <p><strong>Listing ID:</strong> {{listingId}}</p>
+                <p><strong>Title:</strong> {{listingTitle}}</p>
+            </div>
+            <p>Best regards,<br>The {{appName}} Team</p>
+        `
+    },
+    listing_updated: {
+        subject: 'Listing Updated',
+        content: `
+            <p>Hi {{firstName}},</p>
+            <p>Your listing has been updated successfully.</p>
+            <div class="details">
+                <p><strong>Listing ID:</strong> {{listingId}}</p>
+                <p><strong>Title:</strong> {{listingTitle}}</p>
+            </div>
+            <p>Best regards,<br>The {{appName}} Team</p>
+        `
+    },
+    review_request: {
+        subject: 'Share Your Experience - {{listingTitle}}',
+        content: `
+            <p>Hi {{firstName}},</p>
+            <p>We hope you enjoyed your stay at {{listingTitle}}!</p>
+            <p>Would you mind taking a moment to share your experience? Your feedback helps our community make better decisions.</p>
+            <div class="details">
+                <p><strong>Booking ID:</strong> {{bookingId}}</p>
+                <p><strong>Listing:</strong> {{listingTitle}}</p>
+            </div>
+            <p>Best regards,<br>The {{appName}} Team</p>
+        `
+    },
+    payment_confirmation: {
+        subject: 'Payment Confirmation',
+        content: `
+            <p>Hi {{firstName}},</p>
+            <p>Your payment has been confirmed.</p>
+            <div class="details">
+                <p><strong>Amount:</strong> {{amount}}</p>
+                <p><strong>Reference:</strong> {{reference}}</p>
+                <p><strong>Date:</strong> {{date}}</p>
+            </div>
+            <p>Best regards,<br>The {{appName}} Team</p>
+        `
+    },
+    password_reset: {
+        subject: 'Password Reset Request',
+        content: `
+            <p>Hi {{firstName}},</p>
+            <p>We received a request to reset your password.</p>
+            <p>Your reset token is:</p>
+            <p style="text-align: center; font-size: 24px; padding: 20px;">
+                <strong>{{resetToken}}</strong>
+            </p>
+            <p>This token will expire in 15 minutes.</p>
+            <p>If you didn't request this, please ignore this email.</p>
+            <p>Best regards,<br>The {{appName}} Team</p>
+        `
+    },
+    password_changed: {
+        subject: 'Password Changed Successfully',
+        content: `
+            <p>Hi {{firstName}},</p>
+            <p>Your password has been changed successfully.</p>
+            <p>If you didn't make this change, please contact our support team immediately.</p>
+            <p>Best regards,<br>The {{appName}} Team</p>
+        `
+    },
+    booking_on_hold: {
+        subject: 'Your Booking is On Hold',
+        content: `
+            <p>Hi {{firstName}},</p>
+            <p>Your booking for <strong>{{listingTitle}}</strong> is currently on hold pending payment.</p>
+            <div class="details">
+                <p><strong>Booking ID:</strong> {{bookingId}}</p>
+                <p><strong>Check-in:</strong> {{checkIn}}</p>
+                <p><strong>Check-out:</strong> {{checkOut}}</p>
+                <p><strong>Total Amount:</strong> {{totalPrice}}</p>
+            </div>
+            <p>Please complete your payment to confirm your booking. Your hold will expire in 15 minutes.</p>
+            {{#if paymentLink}}
+            <p>
+                <a href="{{paymentLink}}" class="button">Pay Now</a>
+            </p>
+            {{/if}}
             <p>Best regards,<br>The {{appName}} Team</p>
         `
     }

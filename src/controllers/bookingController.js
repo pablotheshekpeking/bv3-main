@@ -2,6 +2,13 @@ import { PrismaClient } from '@prisma/client';
 import { FlutterwaveService } from '../services/flutterwaveService.js';
 import { APIError } from '../utils/errors.js';
 import { sendBookingNotification } from '../services/notificationService.js';
+import { 
+  sendBookingConfirmationEmail, 
+  sendBookingCancellationEmail,
+  sendCheckInReminderEmail,
+  sendPaymentConfirmationEmail,
+  sendBookingOnHoldEmail
+} from '../services/emailService.js';
 
 const prisma = new PrismaClient();
 const flutterwaveService = new FlutterwaveService();
@@ -324,7 +331,13 @@ export const createBooking = async (req, res) => {
     });
 
     // Send notification after successful booking
-    await sendBookingNotification(booking.id);
+    //await sendBookingNotification(booking.id);
+
+    await sendBookingOnHoldEmail(
+      booking,
+      booking.user,
+      flutterwaveResponse.data.link
+    );
 
     res.status(201).json({
       status: 'success',
@@ -454,6 +467,11 @@ export const verifyPayment = async (req, res) => {
             lastName: true
           }
         },
+        listing: {
+          select: {
+            title: true
+          }
+        },
         payments: {
           where: {
             status: 'PENDING'
@@ -506,6 +524,12 @@ export const verifyPayment = async (req, res) => {
             }
           });
         });
+
+        // Send booking confirmation email
+        await sendBookingConfirmationEmail(booking, booking.user);
+
+        // Send payment confirmation email
+        await sendPaymentConfirmationEmail(booking.payments[0], booking.user);
 
         return res.json({
           status: 'success',
@@ -587,6 +611,20 @@ export const deleteBooking = async (req, res) => {
         id: bookingId,
         userId,
         deletedAt: null
+      },
+      include: {
+        user: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true
+          }
+        },
+        listing: {
+          select: {
+            title: true
+          }
+        }
       }
     });
 
@@ -602,6 +640,9 @@ export const deleteBooking = async (req, res) => {
         status: 'CANCELLED'
       }
     });
+
+    // Send booking cancellation email
+    await sendBookingCancellationEmail(booking, booking.user);
 
     res.json({
       status: 'success',
@@ -699,6 +740,13 @@ export const confirmCheckIn = async (req, res) => {
             userId: true,
             title: true
           }
+        },
+        user: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true
+          }
         }
       }
     });
@@ -717,8 +765,11 @@ export const confirmCheckIn = async (req, res) => {
       }
     });
 
+    // Send check-in reminder email
+    await sendCheckInReminderEmail(booking, booking.user);
+
     // Send notification to listing owner
-    await sendBookingNotification(booking.id, 'CHECK_IN_CONFIRMED');
+    //await sendBookingNotification(booking.id, 'CHECK_IN_CONFIRMED');
 
     res.json({
       status: 'success',
