@@ -134,6 +134,18 @@ const adminOptions = {
           metadata: { type: 'mixed', isVisible: { list: false, filter: false, show: true, edit: false } }
         }
       }
+    },
+    {
+      resource: { model: getModelByName('VendorBankAccount'), client: prisma },
+      options: {
+        navigation: { name: 'VendorBankAccount' },
+        properties: {
+          accountNumber: { isVisible: { list: true, filter: true, show: true, edit: true } },
+          accountName: { isVisible: { list: true, filter: true, show: true, edit: true } },
+          bankName: { isVisible: { list: true, filter: true, show: true, edit: true } },
+          bankCode: { isVisible: { list: true, filter: true, show: true, edit: true } }
+        }
+      }
     }
   ],
   branding: {
