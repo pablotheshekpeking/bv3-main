@@ -82,7 +82,7 @@ export const addBankAccount = async (req, res) => {
         userId,
         accountNumber,
         accountBank,
-        accountName: verificationResponse.data.account_name || accountName,
+        accountName,
         isVerified: true
       }
     });
