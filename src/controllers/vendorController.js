@@ -148,4 +148,38 @@ export const deleteBankAccount = async (req, res) => {
       error: error.message || 'Internal server error'
     });
   }
+};
+
+export const setDefaultBankAccount = async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const userId = req.user.userId;
+
+    // First, unset all default accounts for this user
+    await prisma.vendorBankAccount.updateMany({
+      where: { userId },
+      data: { isDefault: false }
+    });
+
+    // Then set the selected account as default
+    const bankAccount = await prisma.vendorBankAccount.update({
+      where: { id: accountId, userId },
+      data: { isDefault: true }
+    });
+
+    if (!bankAccount) {
+      throw new APIError('Bank account not found', 404);
+    }
+
+    res.json({
+      status: 'success',
+      message: 'Default bank account updated successfully',
+      bankAccount
+    });
+  } catch (error) {
+    console.error('Set default bank account error:', error);
+    res.status(error.statusCode || 500).json({
+      error: error.message || 'Internal server error'
+    });
+  }
 }; 

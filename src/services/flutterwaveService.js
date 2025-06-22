@@ -93,4 +93,40 @@ export class FlutterwaveService {
       return false;
     }
   }
+
+  async verifyBankAccount({ account_number, account_bank }) {
+    try {
+      const response = await axios.post(
+        'https://api.flutterwave.com/v3/accounts/resolve',
+        { account_number, account_bank },
+        { 
+          headers: { 
+            Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}` 
+          } 
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Bank account verification error:', error);
+      throw new Error('Failed to verify bank account');
+    }
+  }
+
+  async initiateTransfer(payload) {
+    try {
+      const response = await axios.post(
+        'https://api.flutterwave.com/v3/transfers',
+        payload,
+        { 
+          headers: { 
+            Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}` 
+          } 
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Transfer initiation error:', error);
+      throw new Error('Failed to initiate transfer');
+    }
+  }
 }
