@@ -67,14 +67,14 @@ export const addBankAccount = async (req, res) => {
     }
 
     // Verify account details with Flutterwave
-    const verificationResponse = await flutterwaveService.verifyBankAccount({
+    {/*const verificationResponse = await flutterwaveService.verifyBankAccount({
       account_number: accountNumber,
       account_bank: accountBank
-    });
+    });*/}
 
-    if (!verificationResponse.status === 'success') {
-      throw new APIError('Invalid bank account details', 400);
-    }
+    //if (!verificationResponse.status === 'success') {
+    //  throw new APIError('Invalid bank account details', 400);
+    //}
 
     // Create bank account record
     const bankAccount = await prisma.vendorBankAccount.create({
