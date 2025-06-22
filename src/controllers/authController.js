@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 
 export const signup = async (req, res) => {
   try {
-    const { email, password, firstName, lastName, phone } = req.body;
+    const { email, password, firstName, lastName, phone, country } = req.body;
 
     // Existing user check
     const existingUser = await prisma.user.findFirst({
@@ -46,7 +46,7 @@ export const signup = async (req, res) => {
         firstName,
         lastName,
         phone,
-        country: req.body.country || 'NG',
+        country: country || 'NG',
         status: 'PENDING',
       },
     });
