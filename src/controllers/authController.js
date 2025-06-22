@@ -8,6 +8,7 @@ const prisma = new PrismaClient();
 
 export const signup = async (req, res) => {
   try {
+    console.log('Received signup request with body:', req.body);
     const { email, password, firstName, lastName, phone, country } = req.body;
 
     // Existing user check
