@@ -227,6 +227,84 @@ export const emailTemplates = {
             {{/if}}
             <p>Best regards,<br>The {{appName}} Team</p>
         `
+    },
+    booking_confirmation_owner: {
+        subject: 'New Booking Confirmed - {{listingTitle}}',
+        content: `
+            <p>Hi {{firstName}},</p>
+            <p>Great news! You have a new confirmed booking for your listing.</p>
+            <div class="details">
+                <p><strong>Booking ID:</strong> {{bookingId}}</p>
+                <p><strong>Guest:</strong> {{guestName}}</p>
+                <p><strong>Check-in:</strong> {{checkIn}}</p>
+                <p><strong>Check-out:</strong> {{checkOut}}</p>
+                <p><strong>Total Amount:</strong> {{totalPrice}}</p>
+            </div>
+            <p>Please prepare your listing for the guest's arrival.</p>
+            <p>Best regards,<br>The {{appName}} Team</p>
+        `
+    },
+    booking_cancellation_owner: {
+        subject: 'Booking Cancelled - {{listingTitle}}',
+        content: `
+            <p>Hi {{firstName}},</p>
+            <p>A booking for your listing has been cancelled.</p>
+            <div class="details">
+                <p><strong>Booking ID:</strong> {{bookingId}}</p>
+                <p><strong>Guest:</strong> {{guestName}}</p>
+                <p><strong>Listing:</strong> {{listingTitle}}</p>
+            </div>
+            <p>The dates are now available for new bookings.</p>
+            <p>Best regards,<br>The {{appName}} Team</p>
+        `
+    },
+    check_in_reminder_owner: {
+        subject: 'Guest Check-in Reminder - {{listingTitle}}',
+        content: `
+            <p>Hi {{firstName}},</p>
+            <p>This is a reminder that your guest will be checking in soon.</p>
+            <div class="details">
+                <p><strong>Booking ID:</strong> {{bookingId}}</p>
+                <p><strong>Guest:</strong> {{guestName}}</p>
+                <p><strong>Check-in Date:</strong> {{checkIn}}</p>
+                <p><strong>Listing:</strong> {{listingTitle}}</p>
+            </div>
+            <p>Please ensure your listing is ready for the guest's arrival.</p>
+            <p>Best regards,<br>The {{appName}} Team</p>
+        `
+    },
+    booking_on_hold_owner: {
+        subject: 'New Booking Request - {{listingTitle}}',
+        content: `
+            <p>Hi {{firstName}},</p>
+            <p>You have a new booking request for <strong>{{listingTitle}}</strong>.</p>
+            <div class="details">
+                <p><strong>Booking ID:</strong> {{bookingId}}</p>
+                <p><strong>Guest:</strong> {{guestName}}</p>
+                <p><strong>Check-in:</strong> {{checkIn}}</p>
+                <p><strong>Check-out:</strong> {{checkOut}}</p>
+                <p><strong>Total Amount:</strong> {{totalPrice}}</p>
+            </div>
+            <p>The guest is currently completing their payment. You'll receive another notification once the payment is confirmed.</p>
+            <p>Best regards,<br>The {{appName}} Team</p>
+        `
+    },
+    new_booking_notification: {
+        subject: 'New Booking Request - {{listingTitle}}',
+        content: `
+            <p>Hi {{firstName}},</p>
+            <p>You have a new booking request for your listing!</p>
+            <div class="details">
+                <p><strong>Booking ID:</strong> {{bookingId}}</p>
+                <p><strong>Guest:</strong> {{guestName}}</p>
+                <p><strong>Guest Email:</strong> {{guestEmail}}</p>
+                <p><strong>Check-in:</strong> {{checkIn}}</p>
+                <p><strong>Check-out:</strong> {{checkOut}}</p>
+                <p><strong>Total Amount:</strong> {{totalPrice}}</p>
+            </div>
+            <p>The guest is currently completing their payment. You'll receive another notification once the payment is confirmed.</p>
+            <p>Best regards,<br>The {{appName}} Team</p>
+        `
     }
 };
 

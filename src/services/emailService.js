@@ -74,8 +74,9 @@ export const sendVerificationEmail = async (user, code) => {
 };
 
 // Booking-related emails
-export const sendBookingConfirmationEmail = async (booking, user) => {
-  return sendTemplatedEmail(user.email, 'booking_confirmation', {
+export const sendBookingConfirmationEmail = async (booking, user, listingOwner = null) => {
+  // Send to booking user
+  await sendTemplatedEmail(user.email, 'booking_confirmation', {
     firstName: user.firstName,
     bookingId: booking.id,
     checkIn: booking.checkIn,
@@ -83,23 +84,59 @@ export const sendBookingConfirmationEmail = async (booking, user) => {
     totalPrice: booking.totalPrice,
     listingTitle: booking.listing.title
   });
+
+  // Send to listing owner if provided
+  if (listingOwner) {
+    await sendTemplatedEmail(listingOwner.email, 'booking_confirmation_owner', {
+      firstName: listingOwner.firstName,
+      bookingId: booking.id,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+      totalPrice: booking.totalPrice,
+      listingTitle: booking.listing.title,
+      guestName: `${user.firstName} ${user.lastName}`
+    });
+  }
 };
 
-export const sendBookingCancellationEmail = async (booking, user) => {
-  return sendTemplatedEmail(user.email, 'booking_cancellation', {
+export const sendBookingCancellationEmail = async (booking, user, listingOwner = null) => {
+  // Send to booking user
+  await sendTemplatedEmail(user.email, 'booking_cancellation', {
     firstName: user.firstName,
     bookingId: booking.id,
     listingTitle: booking.listing.title
   });
+
+  // Send to listing owner if provided
+  if (listingOwner) {
+    await sendTemplatedEmail(listingOwner.email, 'booking_cancellation_owner', {
+      firstName: listingOwner.firstName,
+      bookingId: booking.id,
+      listingTitle: booking.listing.title,
+      guestName: `${user.firstName} ${user.lastName}`
+    });
+  }
 };
 
-export const sendCheckInReminderEmail = async (booking, user) => {
-  return sendTemplatedEmail(user.email, 'check_in_reminder', {
+export const sendCheckInReminderEmail = async (booking, user, listingOwner = null) => {
+  // Send to booking user
+  await sendTemplatedEmail(user.email, 'check_in_reminder', {
     firstName: user.firstName,
     bookingId: booking.id,
     checkIn: booking.checkIn,
     listingTitle: booking.listing.title
   });
+
+  // Send to listing owner if provided
+  if (listingOwner) {
+    await sendTemplatedEmail(listingOwner.email, 'check_in_reminder_owner', {
+      firstName: listingOwner.firstName,
+      bookingId: booking.id,
+      checkIn: booking.checkIn,
+      listingTitle: booking.listing.title,
+      guestName: `${user.firstName} ${user.lastName}`
+    });
+  }
 };
 
 // Listing-related emails
@@ -152,8 +189,9 @@ export const sendPasswordChangedEmail = async (user) => {
   });
 };
 
-export const sendBookingOnHoldEmail = async (booking, user, paymentLink) => {
-  return sendTemplatedEmail(user.email, 'booking_on_hold', {
+export const sendBookingOnHoldEmail = async (booking, user, paymentLink, listingOwner = null) => {
+  // Send to booking user
+  await sendTemplatedEmail(user.email, 'booking_on_hold', {
     firstName: user.firstName,
     bookingId: booking.id,
     checkIn: booking.checkIn,
@@ -161,5 +199,32 @@ export const sendBookingOnHoldEmail = async (booking, user, paymentLink) => {
     totalPrice: booking.totalPrice,
     listingTitle: booking.listing.title,
     paymentLink
+  });
+
+  // Send to listing owner if provided
+  if (listingOwner) {
+    await sendTemplatedEmail(listingOwner.email, 'booking_on_hold_owner', {
+      firstName: listingOwner.firstName,
+      bookingId: booking.id,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+      totalPrice: booking.totalPrice,
+      listingTitle: booking.listing.title,
+      guestName: `${user.firstName} ${user.lastName}`,
+      paymentLink
+    });
+  }
+};
+
+export const sendNewBookingNotificationEmail = async (booking, listingOwner, guest) => {
+  await sendTemplatedEmail(listingOwner.email, 'new_booking_notification', {
+    firstName: listingOwner.firstName,
+    bookingId: booking.id,
+    checkIn: booking.checkIn,
+    checkOut: booking.checkOut,
+    totalPrice: booking.totalPrice,
+    listingTitle: booking.listing.title,
+    guestName: `${guest.firstName} ${guest.lastName}`,
+    guestEmail: guest.email
   });
 }; 

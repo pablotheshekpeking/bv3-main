@@ -7,7 +7,8 @@ import {
   sendBookingCancellationEmail,
   sendCheckInReminderEmail,
   sendPaymentConfirmationEmail,
-  sendBookingOnHoldEmail
+  sendBookingOnHoldEmail,
+  sendNewBookingNotificationEmail
 } from '../services/emailService.js';
 
 const prisma = new PrismaClient();
@@ -195,9 +196,17 @@ export const createBooking = async (req, res) => {
         listing: {
           select: {
             title: true,
+            userId: true,
             images: {
               where: { isPrimary: true },
               select: { url: true }
+            },
+            user: {
+              select: {
+                email: true,
+                firstName: true,
+                lastName: true
+              }
             }
           }
         },
@@ -333,10 +342,18 @@ export const createBooking = async (req, res) => {
     // Send notification after successful booking
     //await sendBookingNotification(booking.id);
 
+    // Only send booking on hold email to both parties (this is the initial notification)
     await sendBookingOnHoldEmail(
       booking,
       booking.user,
       flutterwaveResponse.data.link
+    );
+
+    // Send new booking notification to listing owner
+    await sendNewBookingNotificationEmail(
+      booking,
+      booking.listing.user,
+      booking.user
     );
 
     res.status(201).json({
@@ -469,7 +486,15 @@ export const verifyPayment = async (req, res) => {
         },
         listing: {
           select: {
-            title: true
+            title: true,
+            userId: true,
+            user: {
+              select: {
+                email: true,
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         },
         payments: {
@@ -525,11 +550,13 @@ export const verifyPayment = async (req, res) => {
           });
         });
 
-        // Send booking confirmation email
-        await sendBookingConfirmationEmail(booking, booking.user);
+        // Send booking confirmation email to both parties
+        await sendBookingConfirmationEmail(booking, booking.user, booking.listing.user);
 
-        // Send payment confirmation email
-        await sendPaymentConfirmationEmail(booking.payments[0], booking.user);
+        // Send payment confirmation email to user only
+        if (existingPayment) {
+          await sendPaymentConfirmationEmail(existingPayment, booking.user);
+        }
 
         return res.json({
           status: 'success',
@@ -622,7 +649,15 @@ export const deleteBooking = async (req, res) => {
         },
         listing: {
           select: {
-            title: true
+            title: true,
+            userId: true,
+            user: {
+              select: {
+                email: true,
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         }
       }
@@ -642,7 +677,7 @@ export const deleteBooking = async (req, res) => {
     });
 
     // Send booking cancellation email
-    await sendBookingCancellationEmail(booking, booking.user);
+    await sendBookingCancellationEmail(booking, booking.user, booking.listing.user);
 
     res.json({
       status: 'success',
@@ -668,13 +703,33 @@ export const updateBookingStatus = async (req, res) => {
       throw new APIError('Invalid status', 400);
     }
 
-    // Find the booking
+    // Find the booking with listing owner information
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
         user: {
           select: {
-            id: true
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true
+          }
+        },
+        listing: {
+          select: {
+            title: true,
+            userId: true,
+            user: {
+              select: {
+                email: true,
+                firstName: true,
+                lastName: true
+              }
+            },
+            images: {
+              where: { isPrimary: true },
+              select: { url: true }
+            }
           }
         }
       }
@@ -707,6 +762,9 @@ export const updateBookingStatus = async (req, res) => {
       }
     });
 
+    // Send booking confirmation email to both parties
+    await sendBookingConfirmationEmail(booking, booking.user, booking.listing.user);
+    
     res.json({
       status: 'success',
       message: 'Booking status updated successfully',
@@ -766,7 +824,7 @@ export const confirmCheckIn = async (req, res) => {
     });
 
     // Send check-in reminder email
-    await sendCheckInReminderEmail(booking, booking.user);
+    await sendCheckInReminderEmail(booking, booking.user, booking.listing.user);
 
     // Send notification to listing owner
     //await sendBookingNotification(booking.id, 'CHECK_IN_CONFIRMED');
