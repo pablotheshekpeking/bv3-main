@@ -5,12 +5,14 @@ import {
   addBankAccount, 
   getBankAccounts, 
   deleteBankAccount,
-  setDefaultBankAccount 
+  setDefaultBankAccount,
+  getBanks
 } from '../controllers/vendorController.js';
 
 const router = express.Router();
 
 router.post('/become-vendor', authenticateToken, becomeVendor);
+router.get('/banks', authenticateToken, getBanks);
 router.post('/bank-accounts', authenticateToken, addBankAccount);
 router.get('/bank-accounts', authenticateToken, getBankAccounts);
 router.delete('/bank-accounts/:accountId', authenticateToken, deleteBankAccount);

@@ -101,7 +101,7 @@ export class FlutterwaveService {
         { account_number, account_bank },
         { 
           headers: { 
-            Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}` 
+            Authorization: `Bearer ${this.secretKey}` 
           } 
         }
       );
@@ -119,7 +119,7 @@ export class FlutterwaveService {
         payload,
         { 
           headers: { 
-            Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}` 
+            Authorization: `Bearer ${this.secretKey}` 
           } 
         }
       );
@@ -127,6 +127,49 @@ export class FlutterwaveService {
     } catch (error) {
       console.error('Transfer initiation error:', error);
       throw new Error('Failed to initiate transfer');
+    }
+  }
+
+  async getBanks(country = 'NG') {
+    try {
+      // Check if the secret key exists
+      if (!this.secretKey) {
+        throw new Error('Flutterwave secret key is not configured');
+      }
+
+      console.log(`Fetching banks for country: ${country}`);
+
+      const response = await axios.get(
+        `${this.baseURL}/banks/${country}`,
+        { 
+          headers: { 
+            Authorization: `Bearer ${this.secretKey}` 
+          } 
+        }
+      );
+      
+      console.log('Banks response status:', response.data.status);
+      return response.data;
+    } catch (error) {
+      console.error('Get banks error:', error.response?.data || error.message);
+      
+      if (error.response?.status === 401) {
+        throw new Error('Invalid Flutterwave API key. Please check your configuration.');
+      }
+
+      if (error.response?.status === 403) {
+        throw new Error('Access denied. Please check your API key permissions.');
+      }
+
+      if (error.response?.status === 404) {
+        throw new Error(`No banks found for country: ${country}`);
+      }
+
+      if (error.response?.status === 500) {
+        throw new Error('Internal server error. Please try again later.');
+      }
+      
+      throw new Error('Failed to fetch banks from Flutterwave');
     }
   }
 }

@@ -182,4 +182,53 @@ export const setDefaultBankAccount = async (req, res) => {
       error: error.message || 'Internal server error'
     });
   }
+};
+
+export const getBanks = async (req, res) => {
+  try {
+    const { country = 'NG' } = req.query; // Default to Nigeria if no country provided
+    const userId = req.user.userId;
+
+    // Check if Flutterwave is configured
+    if (!process.env.FLW_SECRET_KEY) {
+      return res.status(500).json({
+        status: 'error',
+        error: 'Flutterwave is not configured. Please contact support.'
+      });
+    }
+
+    // Get user's country if not provided in query
+    let userCountry = country;
+    if (!country || country === 'user') {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { country: true }
+      });
+      userCountry = user?.country || 'NG'; // Default to Nigeria if no country set
+    }
+
+    console.log(`Fetching banks for country: ${userCountry}`);
+    
+    // Fetch banks from Flutterwave
+    const banksResponse = await flutterwaveService.getBanks(userCountry);
+    
+    if (banksResponse.status !== 'success') {
+      return res.status(400).json({
+        status: 'error',
+        error: banksResponse.message || 'Failed to fetch banks'
+      });
+    }
+
+    res.json({
+      status: 'success',
+      banks: banksResponse.data,
+      country: userCountry
+    });
+  } catch (error) {
+    console.error('Get banks error:', error);
+    res.status(500).json({
+      status: 'error',
+      error: error.message || 'Failed to fetch banks'
+    });
+  }
 }; 

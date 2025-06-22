@@ -46,6 +46,7 @@ export const signup = async (req, res) => {
         firstName,
         lastName,
         phone,
+        country: req.body.country || 'NG',
         status: 'PENDING',
       },
     });
