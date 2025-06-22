@@ -93,6 +93,7 @@ export const getProfile = async (req, res) => {
         phoneVerified: true,
         kycVerified: true,
         isVendor: true,
+        country: true,
         status: true,
         _count: {
           select: {
