@@ -6,6 +6,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import { addToBlacklist } from '../services/tokenService.js';
 import * as tokenValidator from '../middleware/tokenValidator.js';
 import { sendEmail } from '../services/emailService.js';
+import { forgotPassword, resetPassword } from '../controllers/authController.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -231,5 +232,8 @@ router.post('/test-email', async (req, res) => {
     });
   }
 });
+
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 export default router; 

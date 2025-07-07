@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { sendWelcomeEmail, sendVerificationEmail } from '../services/emailService.js';
+import { sendWelcomeEmail, sendVerificationEmail, sendTemplatedEmail } from '../services/emailService.js';
 import { sendVerificationCode } from '../services/verificationService.js';
 
 const prisma = new PrismaClient();
@@ -88,7 +88,7 @@ export const signup = async (req, res) => {
   }
 };
 
-exports.login = async (req, res) => {
+export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -144,7 +144,7 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.validateSession = async (req, res) => {
+export const validateSession = async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -180,5 +180,62 @@ exports.validateSession = async (req, res) => {
       code: 'INVALID_TOKEN',
       message: 'Invalid token' 
     });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ message: 'Email is required' });
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    // Don't reveal if user exists
+    return res.json({ message: 'If that email is registered, a reset code has been sent.' });
+  }
+
+  // Generate a JWT token (expires in 15 min)
+  const resetToken = jwt.sign(
+    { userId: user.id },
+    process.env.JWT_SECRET,
+    { expiresIn: '15m' }
+  );
+
+  // Use your existing email service and template
+  await sendTemplatedEmail(user.email, 'password_reset', {
+    firstName: user.firstName,
+    resetToken
+  });
+
+  res.json({ message: 'If that email is registered, a reset code has been sent.' });
+};
+
+export const resetPassword = async (req, res) => {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword) {
+    return res.status(400).json({ message: 'Token and new password are required' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (!user) return res.status(400).json({ message: 'Invalid token' });
+
+    // Password validation (reuse your regex)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        message: 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character'
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword }
+    });
+
+    res.json({ message: 'Password has been reset successfully.' });
+  } catch (err) {
+    res.status(400).json({ message: 'Invalid or expired token' });
   }
 }; 
