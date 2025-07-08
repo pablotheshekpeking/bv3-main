@@ -72,6 +72,10 @@ model User {
   profileImage        String?
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
+
+  resetToken          String?        // For password reset (numeric code)
+  resetTokenExpires   DateTime?      // Expiry time for reset token
+
   listings            Listing[]
   verifications       Verification[]
   reviews             Review[]

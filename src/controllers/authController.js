@@ -193,12 +193,20 @@ export const forgotPassword = async (req, res) => {
     return res.json({ message: 'If that email is registered, a reset code has been sent.' });
   }
 
-  // Generate a JWT token (expires in 15 min)
-  const resetToken = jwt.sign(
-    { userId: user.id },
-    process.env.JWT_SECRET,
-    { expiresIn: '15m' }
-  );
+  // Generate a 6-digit random number as a string
+  const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+
+  // Set expiry (e.g., 15 minutes from now)
+  const resetTokenExpires = new Date(Date.now() + 15 * 60 * 1000);
+
+  // Store in DB
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      resetToken,
+      resetTokenExpires,
+    },
+  });
 
   // Use your existing email service and template
   await sendTemplatedEmail(user.email, 'password_reset', {
@@ -216,9 +224,13 @@ export const resetPassword = async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
-    if (!user) return res.status(400).json({ message: 'Invalid token' });
+    const user = await prisma.user.findFirst({
+      where: { resetToken: token },
+    });
+    if (!user || !user.resetTokenExpires || user.resetTokenExpires < new Date()) {
+      // invalid or expired
+      return res.status(400).json({ message: 'Invalid or expired token' });
+    }
 
     // Password validation (reuse your regex)
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -231,7 +243,7 @@ export const resetPassword = async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({
       where: { id: user.id },
-      data: { password: hashedPassword }
+      data: { password: hashedPassword, resetToken: null, resetTokenExpires: null }
     });
 
     res.json({ message: 'Password has been reset successfully.' });
