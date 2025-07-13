@@ -261,7 +261,20 @@ export const getListing = async (req, res) => {
 export const updateListing = async (req, res) => {
     try {
         const { id } = req.params;
-        const updates = req.body;
+        const { 
+            title, 
+            description, 
+            price, 
+            type, 
+            currency, 
+            location, 
+            features,
+            imageUrls,
+            metadata,
+            categoryId,
+            availability,
+            status
+        } = req.body;
         const userId = req.user.userId;
 
         const listing = await prisma.listing.findUnique({
@@ -286,9 +299,88 @@ export const updateListing = async (req, res) => {
             return res.status(403).json({ error: 'Not authorized' });
         }
 
-        const updatedListing = await prisma.listing.update({
-            where: { id },
-            data: updates
+        // Prepare update data without imageUrls
+        const updateData = {
+            title,
+            description,
+            price,
+            type,
+            currency,
+            location,
+            features,
+            metadata,
+            categoryId,
+            status
+        };
+
+        // Remove undefined values
+        Object.keys(updateData).forEach(key => {
+            if (updateData[key] === undefined) {
+                delete updateData[key];
+            }
+        });
+
+        // Update listing with transaction to handle images
+        const updatedListing = await prisma.$transaction(async (prisma) => {
+            // Update the listing
+            const updated = await prisma.listing.update({
+                where: { id },
+                data: updateData,
+                include: {
+                    images: true,
+                    category: true
+                }
+            });
+
+            // Handle image updates if imageUrls are provided
+            if (imageUrls && Array.isArray(imageUrls)) {
+                // Delete existing images
+                await prisma.image.deleteMany({
+                    where: { listingId: id }
+                });
+
+                // Create new images
+                if (imageUrls.length > 0) {
+                    await prisma.image.createMany({
+                        data: imageUrls.map((url, index) => ({
+                            listingId: id,
+                            url,
+                            isPrimary: index === 0
+                        }))
+                    });
+                }
+            }
+
+            // Handle availability updates for apartment listings
+            if ((type === 'APARTMENT_RENT' || type === 'APARTMENT_SHORTLET') && availability) {
+                // Delete existing availability
+                await prisma.apartmentAvailability.deleteMany({
+                    where: { listingId: id }
+                });
+
+                // Create new availability periods
+                if (availability.length > 0) {
+                    await prisma.apartmentAvailability.createMany({
+                        data: availability.map(period => ({
+                            listingId: id,
+                            startDate: new Date(period.startDate),
+                            endDate: new Date(period.endDate),
+                            pricePerNight: period.pricePerNight,
+                            isBlocked: period.isBlocked || false
+                        }))
+                    });
+                }
+            }
+
+            // Return updated listing with fresh data
+            return await prisma.listing.findUnique({
+                where: { id },
+                include: {
+                    images: true,
+                    category: true,
+                    availabilities: true
+                }
+            });
         });
 
         // Send listing updated email
@@ -296,6 +388,7 @@ export const updateListing = async (req, res) => {
 
         res.json(updatedListing);
     } catch (error) {
+        console.error('Update listing error:', error);
         res.status(400).json({ error: error.message });
     }
 };
